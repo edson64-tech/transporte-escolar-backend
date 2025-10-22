@@ -6,91 +6,78 @@ export class ParentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ============================================================
-  // 📍 ÚLTIMA POSIÇÃO DE UM ALUNO - CORRIGIDO
+  // 📍 ÚLTIMA POSIÇÃO DE UM ALUNO - VERSÃO POSTGIS PROFISSIONAL
   // ============================================================
   async live(alunoId: string) {
     if (!alunoId) {
       throw new BadRequestException('aluno_id é obrigatório');
     }
 
-    // Buscar última viagem do aluno
-    const ultimaViagemAluno = await this.prisma.aluno_viagem.findFirst({
-      where: { 
-        aluno_id: alunoId,
-        status_embarque: 'embarcado'
-      },
-      orderBy: { data_registro: 'desc' },
-      include: {
-        viagens: {
-          include: {
-            gps_viagem: {
-              orderBy: { timestamp: 'desc' },
-              take: 1
-            }
-          }
-        }
-      }
-    });
+    // ✅ Query otimizada com PostGIS
+    const result: any[] = await this.prisma.$queryRaw`
+      SELECT 
+        av.viagem_id,
+        av.aluno_id,
+        g.gps_id,
+        g.latitude as bus_lat,
+        g.longitude as bus_lng,
+        g.velocidade,
+        g.timestamp,
+        a.home_lat,
+        a.home_lng,
+        ST_Distance(
+          g.geom::geography,
+          a.home_geom::geography
+        ) as distancia_metros,
+        CASE 
+          WHEN g.velocidade > 0 THEN 
+            ST_Distance(g.geom::geography, a.home_geom::geography) / (g.velocidade * 1000.0 / 3600.0) / 60.0
+          ELSE 
+            ST_Distance(g.geom::geography, a.home_geom::geography) / (20.0 * 1000.0 / 3600.0) / 60.0
+        END as eta_minutos
+      FROM public.aluno_viagem av
+      JOIN public.viagens v ON v.viagem_id = av.viagem_id
+      JOIN public.gps_viagem g ON g.viagem_id = v.viagem_id
+      JOIN public.alunos a ON a.aluno_id = av.aluno_id
+      WHERE av.aluno_id = ${alunoId}::uuid
+        AND av.status_embarque = 'embarcado'
+        AND g.geom IS NOT NULL
+        AND a.home_geom IS NOT NULL
+      ORDER BY g.timestamp DESC
+      LIMIT 1
+    `;
 
-    if (!ultimaViagemAluno?.viagens?.gps_viagem?.[0]) {
+    if (!result || result.length === 0) {
       return null;
     }
 
-    const gps = ultimaViagemAluno.viagens.gps_viagem[0];
-    
-    // Buscar dados do aluno para calcular distância
-    const aluno = await this.prisma.alunos.findUnique({
-      where: { aluno_id: alunoId },
-      select: { home_lat: true, home_lng: true }
-    });
-
-    // Calcular distância simples (haversine simplificado)
-    let distanciaMetros: number | null = null;
-    let etaMinutos: number | null = null;
-
-    if (aluno?.home_lat && aluno?.home_lng && gps.latitude && gps.longitude) {
-      const R = 6371000; // Raio da Terra em metros
-      const lat1 = aluno.home_lat * Math.PI / 180;
-      const lat2 = Number(gps.latitude) * Math.PI / 180;
-      const deltaLat = (Number(gps.latitude) - aluno.home_lat) * Math.PI / 180;
-      const deltaLng = (Number(gps.longitude) - aluno.home_lng) * Math.PI / 180;
-
-      const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
-                Math.cos(lat1) * Math.cos(lat2) *
-                Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-      distanciaMetros = R * c;
-
-      // ETA: velocidade em m/s (assumir 20 km/h = 5.5 m/s se velocidade não disponível)
-      const velocidadeMS = gps.velocidade ? Number(gps.velocidade) * 1000 / 3600 : 5.5;
-      etaMinutos = Math.round(distanciaMetros / velocidadeMS / 60);
-    }
+    const data = result[0];
 
     return {
-      viagem_id: ultimaViagemAluno.viagem_id,
+      viagem_id: data.viagem_id,
+      aluno_id: data.aluno_id,
       bus: {
-        latitude: gps.latitude,
-        longitude: gps.longitude,
-        velocidade: gps.velocidade,
+        latitude: Number(data.bus_lat),
+        longitude: Number(data.bus_lng),
+        velocidade: data.velocidade ? Number(data.velocidade) : null,
       },
-      timestamp: gps.timestamp,
-      distancia_metros: distanciaMetros ? Math.round(distanciaMetros) : null,
-      eta_minutos: etaMinutos,
+      timestamp: data.timestamp,
+      distancia_metros: data.distancia_metros ? Math.round(Number(data.distancia_metros)) : null,
+      eta_minutos: data.eta_minutos ? Math.round(Number(data.eta_minutos)) : null,
     };
   }
 
   // ============================================================
-  // 👨‍👩‍👧 LISTA OS ALUNOS DO ENCARREGADO (VIA E-MAIL)
+  // 👨‍👩‍👧 LISTA OS ALUNOS DO ENCARREGADO (VIA TELEFONE) - CORRIGIDO
   // ============================================================
-  async myStudents(email: string) {
-    if (!email) {
+  async myStudents(telefone: string) {
+    if (!telefone) {
       return [];
     }
 
-    // Buscar encarregado pelo e-mail
+    // ✅ CORRIGIDO: Buscar encarregado pelo TELEFONE
     const encarregado = await this.prisma.encarregados.findUnique({
-      where: { email },
+      where: { telefone },
       select: { encarregado_id: true },
     });
 
@@ -175,7 +162,6 @@ export class ParentsService {
       throw new BadRequestException('ano_lectivo_id é obrigatório');
     }
 
-    // Verificar se encarregado existe
     const encarregadoExiste = await this.prisma.encarregados.findUnique({
       where: { encarregado_id }
     });
@@ -184,7 +170,6 @@ export class ParentsService {
       throw new NotFoundException('Encarregado não encontrado');
     }
 
-    // Verificar se ano letivo existe
     const anoLectivoExiste = await this.prisma.ano_lectivo.findUnique({
       where: { ano_lectivo_id }
     });
@@ -193,7 +178,6 @@ export class ParentsService {
       throw new NotFoundException('Ano letivo não encontrado');
     }
 
-    // Verificar se aluno existe
     let aluno: any = null;
 
     if (aluno_id) {
@@ -202,7 +186,7 @@ export class ParentsService {
       });
     }
 
-    // Se não existe, criar
+    // ✅ Criar aluno - trigger sincroniza home_geom automaticamente
     if (!aluno) {
       aluno = await this.prisma.alunos.create({
         data: {
@@ -216,7 +200,6 @@ export class ParentsService {
       });
     }
 
-    // Criar adesão
     const adesao = await this.prisma.adesoes_servico.create({
       data: {
         aluno_id: aluno.aluno_id,
@@ -265,5 +248,44 @@ export class ParentsService {
       },
       orderBy: { created_at: 'desc' },
     });
+  }
+
+  // ============================================================
+  // 🗺️ BUSCAR ALUNOS PRÓXIMOS (NOVO - POSTGIS)
+  // ============================================================
+  async buscarAlunosProximos(lat: number, lng: number, raioKm: number = 2) {
+    const raioMetros = raioKm * 1000;
+
+    const result: any[] = await this.prisma.$queryRaw`
+      SELECT 
+        a.aluno_id,
+        a.nome,
+        a.home_lat as latitude,
+        a.home_lng as longitude,
+        a.referencia_pagamento,
+        ST_Distance(
+          a.home_geom::geography,
+          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+        ) / 1000 as distancia_km
+      FROM public.alunos a
+      WHERE a.ativo = true
+        AND a.home_geom IS NOT NULL
+        AND ST_DWithin(
+          a.home_geom::geography,
+          ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
+          ${raioMetros}
+        )
+      ORDER BY distancia_km
+      LIMIT 50
+    `;
+
+    return result.map(r => ({
+      aluno_id: r.aluno_id,
+      nome: r.nome,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      referencia_pagamento: r.referencia_pagamento,
+      distancia_km: Number(r.distancia_km).toFixed(2),
+    }));
   }
 }
