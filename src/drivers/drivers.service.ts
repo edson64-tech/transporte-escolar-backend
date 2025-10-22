@@ -6,26 +6,30 @@ export class DriversService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ============================================================
-  // 🚍 1. POSIÇÃO GPS - mantém o que já tinhas
+  // 📍 1. POSIÇÃO GPS - CORRIGIDO (SEM SQL INJECTION)
   // ============================================================
   async reportarPosicao(viagemCodigo: string, lat: number, lng: number) {
-    const viagem: any[] = await this.prisma.$queryRawUnsafe(`
-      SELECT viagem_id FROM public.viagens WHERE codigo = '${viagemCodigo}' LIMIT 1;
-    `);
+    // ✅ CORRIGIDO: Usar Prisma ORM em vez de raw SQL
+    const viagem = await this.prisma.viagens.findFirst({
+      where: { codigo: viagemCodigo },
+      select: { viagem_id: true }
+    });
 
-    if (!viagem || viagem.length === 0) {
-      throw new Error(`Viagem não encontrada para código: ${viagemCodigo}`);
+    if (!viagem) {
+      throw new NotFoundException(`Viagem não encontrada para código: ${viagemCodigo}`);
     }
 
-    const viagemId = viagem[0].viagem_id;
+    const gps = await this.prisma.gps_viagem.create({
+      data: {
+        viagem_id: viagem.viagem_id,
+        latitude: lat,
+        longitude: lng,
+        velocidade: 0,
+        estado: 'em_rota',
+      }
+    });
 
-    const res: any[] = await this.prisma.$queryRawUnsafe(`
-      INSERT INTO public.gps_viagem (viagem_id, latitude, longitude, velocidade, estado)
-      VALUES ('${viagemId}', ${lat}, ${lng}, 0, 'em_rota')
-      RETURNING gps_id;
-    `);
-
-    return { ok: true, gps_id: res[0]?.gps_id ?? null };
+    return { ok: true, gps_id: gps.gps_id };
   }
 
   // ============================================================
@@ -36,7 +40,14 @@ export class DriversService {
       where: { telefone },
     });
 
-    if (!motorista) throw new UnauthorizedException('Motorista não encontrado');
+    if (!motorista) {
+      throw new UnauthorizedException('Motorista não encontrado');
+    }
+
+    if (!motorista.ativo) {
+      throw new UnauthorizedException('Motorista inativo');
+    }
+
     if (motorista.senha && motorista.senha !== senha) {
       throw new UnauthorizedException('Senha incorreta');
     }
@@ -59,7 +70,7 @@ export class DriversService {
         rotas: true,
         servicos: true,
       },
-      orderBy: { data: 'asc' }, // o teu schema usa campo 'data'
+      orderBy: { data: 'asc' },
     });
 
     if (!viagens.length) {
@@ -73,36 +84,67 @@ export class DriversService {
   // ▶️ 4. INICIAR VIAGEM
   // ============================================================
   async startViagem(viagem_id: string) {
-    return this.prisma.viagens.update({
-      where: { viagem_id },
-      data: {
-        data: new Date(), // só atualiza a data de início
-      },
-    });
+    try {
+      return await this.prisma.viagens.update({
+        where: { viagem_id },
+        data: {
+          data: new Date(),
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Viagem não encontrada');
+      }
+      throw error;
+    }
   }
 
   // ============================================================
   // ⏹️ 5. FINALIZAR VIAGEM
   // ============================================================
   async stopViagem(viagem_id: string) {
-    return this.prisma.viagens.update({
-      where: { viagem_id },
-      data: {
-        data: new Date(), // registra hora final também
-      },
-    });
+    try {
+      return await this.prisma.viagens.update({
+        where: { viagem_id },
+        data: {
+          data: new Date(),
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Viagem não encontrada');
+      }
+      throw error;
+    }
   }
 
   // ============================================================
   // 👦 6. REGISTAR EMBARQUE OU DESEMBARQUE
   // ============================================================
-  async registarEmbarque(data: any) {
+  async registarEmbarque(data: {
+    aluno_id: string;
+    viagem_id: string;
+    embarque: boolean;
+    latitude?: number;
+    longitude?: number;
+  }) {
     const aluno = await this.prisma.alunos.findUnique({
       where: { aluno_id: data.aluno_id },
     });
-    if (!aluno) throw new NotFoundException('Aluno não encontrado');
 
-    return this.prisma.aluno_viagem.create({
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    const viagem = await this.prisma.viagens.findUnique({
+      where: { viagem_id: data.viagem_id },
+    });
+
+    if (!viagem) {
+      throw new NotFoundException('Viagem não encontrada');
+    }
+
+    return await this.prisma.aluno_viagem.create({
       data: {
         aluno_id: data.aluno_id,
         viagem_id: data.viagem_id,
@@ -111,9 +153,12 @@ export class DriversService {
       },
     });
   }
-  // 🔔 Buscar alertas pendentes
+
+  // ============================================================
+  // 🔔 7. BUSCAR ALERTAS PENDENTES
+  // ============================================================
   async getAlerts(motorista_id: string) {
-    return this.prisma.alertas_motorista.findMany({
+    return await this.prisma.alertas_motorista.findMany({
       where: {
         motorista_id,
         enviado: false,
@@ -122,13 +167,21 @@ export class DriversService {
     });
   }
 
-  // ✅ Marcar alerta como lido
+  // ============================================================
+  // ✅ 8. MARCAR ALERTA COMO LIDO
+  // ============================================================
   async markAlertSent(alerta_id: string) {
-    await this.prisma.alertas_motorista.update({
-      where: { alerta_id },
-      data: { enviado: true },
-    });
-    return { ok: true, alerta_id };
+    try {
+      await this.prisma.alertas_motorista.update({
+        where: { alerta_id },
+        data: { enviado: true, lido: true },
+      });
+      return { ok: true, alerta_id };
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Alerta não encontrado');
+      }
+      throw error;
+    }
   }
-
 }
