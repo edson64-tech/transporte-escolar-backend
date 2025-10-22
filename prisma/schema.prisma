@@ -1,0 +1,800 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model aluno_viagem {
+  aluno_viagem_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id        String?   @db.Uuid
+  viagem_id       String?   @db.Uuid
+  assento_numero  Int?
+  status_embarque String?   @default("pendente") @db.VarChar(20)
+  data_registro   DateTime? @default(now()) @db.Timestamp(6)
+  alunos          alunos?   @relation(fields: [aluno_id], references: [aluno_id], onDelete: NoAction, onUpdate: NoAction)
+  viagens         viagens?  @relation(fields: [viagem_id], references: [viagem_id], onDelete: NoAction, onUpdate: NoAction)
+
+  // ...
+  @@unique([aluno_id, viagem_id], map: "ux_aluno_viagem") // evita duplicação de embarque
+}
+
+model alunos {
+  aluno_id             String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome                 String                   @db.VarChar(100)
+  foto                 String?                  @db.VarChar(255)
+  encarregado_id       String?                  @db.Uuid
+  referencia_pagamento String                   @unique @db.VarChar(30)
+  geom                 Unsupported("geometry")?
+  status               String?                  @default("ativo") @db.VarChar(20)
+  codigo_aluno         String?                  @unique
+  cod_artigo           String?
+  ativo                Boolean                  @default(true)
+  home_lat             Float?
+  home_lng             Float?
+  home_geom            Unsupported("geometry")?
+  adesoes_servico      adesoes_servico[]
+  ajustes_mensalidade  ajustes_mensalidade[]
+  aluno_viagem         aluno_viagem[]
+  encarregados         encarregados?            @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: NoAction, onUpdate: NoAction)
+  contratos_servico    contratos_servico[]
+  encarregados_alunos  encarregados_alunos[]
+  excecoes_mensalidade excecoes_mensalidade[]
+  mensalidades         mensalidades[]
+  pagamentos           pagamentos[]
+  foto_url             String?
+  foto_public_id       String?
+  ocorrencias          ocorrencias[]
+}
+
+model encarregados {
+  encarregado_id      String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome                String                @db.VarChar(100)
+  telefone            String                @unique @db.VarChar(20)
+  email               String?               @unique @db.VarChar(100)
+  senha               String                @db.VarChar(255)
+  alunos              alunos[]
+  encarregados_alunos encarregados_alunos[]
+  tokens              encarregados_token[]
+}
+
+model escolas {
+  escola_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome      String  @db.VarChar(100)
+  endereco  String?
+  campi     campi[]
+  rotas     rotas[]
+}
+
+model gps_viagem {
+  gps_id       String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  viagem_id    String?                  @db.Uuid
+  motorista_id String?                  @db.Uuid
+  timestamp    DateTime?                @default(now()) @db.Timestamp(6)
+  geom         Unsupported("geometry")?
+  velocidade   Decimal?                 @db.Decimal(5, 2)
+  estado       String?                  @default("em_rota") @db.VarChar(20)
+  viagens      viagens?                 @relation(fields: [viagem_id], references: [viagem_id], onDelete: NoAction, onUpdate: NoAction)
+
+  // ... (teu conteúdo atual)
+  @@index([viagem_id, timestamp], map: "ix_gps_viagem_ts")
+}
+
+model notificacoes {
+  notificacao_id    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  titulo            String?   @db.VarChar(100)
+  mensagem          String?
+  tipo_destinatario String?   @db.VarChar(20)
+  rota_id           String?   @db.Uuid
+  viagem_id         String?   @db.Uuid
+  aluno_id          String?   @db.Uuid
+  programacao_tipo  String?   @db.VarChar(20)
+  data_hora         DateTime? @db.Timestamp(6)
+  status            String?   @default("pendente") @db.VarChar(20)
+  uuid_publico      String?   @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  canal             String?   @default("whatsapp")
+  prioridade        Int?      @default(3) @db.SmallInt
+  cron_expr         String?
+  dias_semana       Int[]     @db.SmallInt
+  servico_id        String?   @db.Uuid
+  auto_criar_envios Boolean?  @default(true)
+  meta              Json?     @default("{}")
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([aluno_id], map: "ix_notif_aluno")
+  @@index([programacao_tipo, data_hora], map: "ix_notif_prog")
+  @@index([rota_id], map: "ix_notif_rota")
+  @@index([status], map: "ix_notif_status")
+  @@index([viagem_id], map: "ix_notif_viagem")
+  @@index([status], map: "ix_notificacoes_status")
+}
+
+model pagamentos {
+  pagamento_id   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id       String?   @db.Uuid
+  ano_letivo     String    @db.VarChar(10)
+  mes            Int
+  valor          Decimal   @db.Decimal(10, 2)
+  data_pagamento DateTime? @db.Timestamp(6)
+  referencia     String?   @db.VarChar(30)
+  status         String?   @default("pendente") @db.VarChar(20)
+  alunos         alunos?   @relation(fields: [aluno_id], references: [aluno_id], onDelete: NoAction, onUpdate: NoAction)
+
+  // ...
+  @@index([aluno_id, mes], map: "ix_pagamento_aluno_mes")
+}
+
+model rotas {
+  rota_id              String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo               String                 @unique @db.VarChar(10)
+  nome                 String                 @db.VarChar(100)
+  escola_id            String?                @db.Uuid
+  preco_1_viagem       Decimal?               @db.Decimal(10, 2)
+  preco_2_viagens      Decimal?               @db.Decimal(10, 2)
+  campus_id            String?                @db.Uuid
+  adesoes_servico      adesoes_servico[]
+  contratos_servico    contratos_servico[]
+  partidas_programadas partidas_programadas[]
+  precos_rota          precos_rota[]
+  campi                campi?                 @relation(fields: [campus_id], references: [campus_id], onDelete: NoAction, onUpdate: NoAction)
+  escolas              escolas?               @relation(fields: [escola_id], references: [escola_id], onDelete: NoAction, onUpdate: NoAction)
+  viagens              viagens[]
+}
+
+model servicos {
+  servico_id           String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  letra                String                 @db.Char(1)
+  descricao            String?                @db.VarChar(100)
+  hora_inicio          DateTime               @db.Time(6)
+  partidas_programadas partidas_programadas[]
+  viagens              viagens[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+model viagens {
+  viagem_id            String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo               String                 @unique @db.VarChar(20)
+  rota_id              String?                @db.Uuid
+  servico_id           String?                @db.Uuid
+  viatura_id           String?                @db.Uuid
+  motorista_id         String?                @db.Uuid
+  vigilante_id         String?                @db.Uuid
+  data                 DateTime?              @default(now()) @db.Timestamp(6)
+  aluno_viagem         aluno_viagem[]
+  gps_viagem           gps_viagem[]
+  ocorrencias          ocorrencias[]
+  partidas_programadas partidas_programadas[]
+  rotas                rotas?                 @relation(fields: [rota_id], references: [rota_id], onDelete: NoAction, onUpdate: NoAction)
+  servicos             servicos?              @relation(fields: [servico_id], references: [servico_id], onDelete: NoAction, onUpdate: NoAction)
+  viaturas             viaturas?              @relation("ViaturaViagem", fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
+  alertas_motorista alertas_motorista[]
+}
+
+model adesoes_servico {
+  adesao_id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id            String      @db.Uuid
+  ano_lectivo_id      String      @db.Uuid
+  rota_id             String?     @db.Uuid
+  viagens_dia         Int         @default(1)
+  services_escolhidos String[]    @default([])
+  status              String      @default("ativo") @db.VarChar(20)
+  created_at          DateTime    @default(now()) @db.Timestamp(6)
+  alunos              alunos      @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  ano_lectivo         ano_lectivo @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onDelete: Cascade, onUpdate: NoAction)
+  rotas               rotas?      @relation(fields: [rota_id], references: [rota_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([aluno_id, ano_lectivo_id], map: "ix_adesao_aluno_ano")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ajustes_mensalidade {
+  ajuste_id         String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id          String           @db.Uuid
+  artigo_id         String?          @db.Uuid
+  mes_ref           DateTime         @db.Date
+  tipo_movimento_id String           @db.Uuid
+  valor             Decimal          @db.Decimal(12, 2)
+  motivo            String?
+  data_lancamento   DateTime         @default(now()) @db.Timestamp(6)
+  utilizador        String?          @db.VarChar(100)
+  created_at        DateTime         @default(now()) @db.Timestamp(6)
+  updated_at        DateTime         @default(now()) @db.Timestamp(6)
+  alunos            alunos           @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  artigos_servico   artigos_servico? @relation(fields: [artigo_id], references: [artigo_id], onUpdate: NoAction)
+  tipo_movimento    tipo_movimento   @relation(fields: [tipo_movimento_id], references: [tipo_movimento_id], onUpdate: NoAction)
+
+  @@index([aluno_id, mes_ref], map: "ix_ajuste_aluno_mes")
+}
+
+model ano_lectivo {
+  id                Int                 @id @default(autoincrement())
+  nome              String              @db.VarChar(50)
+  ano_inicio        Int
+  data_inicio       DateTime            @db.Date
+  data_fim          DateTime            @db.Date
+  ativo             Boolean?            @default(true)
+  ano_lectivo_id    String              @unique(map: "ux_ano_lectivo_uuid") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  adesoes_servico   adesoes_servico[]
+  contratos_servico contratos_servico[]
+  mensalidades      mensalidades[]
+  precos_rota       precos_rota[]
+}
+
+model artigos_servico {
+  artigo_id            String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  codigo               String                 @unique @db.VarChar(30)
+  descricao            String                 @db.VarChar(120)
+  ativo                Boolean                @default(true)
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  updated_at           DateTime               @default(now()) @db.Timestamp(6)
+  ajustes_mensalidade  ajustes_mensalidade[]
+  excecoes_mensalidade excecoes_mensalidade[]
+}
+
+model auditoria_acoes {
+  audit_id    BigInt   @id @default(autoincrement())
+  tabela      String   @db.VarChar(100)
+  registro_pk String   @db.VarChar(200)
+  acao        String   @db.VarChar(20)
+  diff        Json?
+  user_id     String?  @db.Uuid
+  criado_em   DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([tabela, criado_em], map: "ix_auditoria_tabela")
+}
+
+model cais {
+  cais_id              String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  campus_id            String?                @db.Uuid
+  nome                 String                 @db.VarChar(50)
+  ativo                Boolean                @default(true)
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  updated_at           DateTime               @default(now()) @db.Timestamp(6)
+  campi                campi?                 @relation(fields: [campus_id], references: [campus_id], onUpdate: NoAction)
+  partidas_programadas partidas_programadas[]
+
+  @@unique([campus_id, nome])
+}
+
+model campi {
+  campus_id  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  escola_id  String   @db.Uuid
+  nome       String   @db.VarChar(100)
+  endereco   String?
+  ativo      Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+  cais       cais[]
+  escolas    escolas  @relation(fields: [escola_id], references: [escola_id], onDelete: Cascade, onUpdate: NoAction)
+  rotas      rotas[]
+
+  @@unique([escola_id, nome])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model contratos_servico {
+  contrato_id    String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id       String      @db.Uuid
+  ano_lectivo_id String      @db.Uuid
+  rota_id        String      @db.Uuid
+  viagens_dia    Int
+  tipo_servico   String      @default("recolha")
+  plano_codigo   String?
+  preco_mensal   Decimal     @db.Decimal(12, 2)
+  ativo          Boolean     @default(true)
+  data_inicio    DateTime    @default(dbgenerated("CURRENT_DATE")) @db.Date
+  data_fim       DateTime?   @db.Date
+  corte_dia      Int         @default(10)
+  cobranca_dia   Int         @default(1)
+  created_at     DateTime    @default(now()) @db.Timestamp(6)
+  updated_at     DateTime    @default(now()) @db.Timestamp(6)
+  alunos         alunos      @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  ano_lectivo    ano_lectivo @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onDelete: Cascade, onUpdate: NoAction)
+  rotas          rotas       @relation(fields: [rota_id], references: [rota_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([aluno_id, ano_lectivo_id])
+}
+
+model encarregados_alunos {
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id       String       @db.Uuid
+  encarregado_id String       @db.Uuid
+  relacao        String?      @db.VarChar(50)
+  principal      Boolean      @default(false)
+  created_at     DateTime     @default(now()) @db.Timestamp(6)
+  updated_at     DateTime     @default(now()) @db.Timestamp(6)
+  alunos         alunos       @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  encarregados   encarregados @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([aluno_id, encarregado_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model excecoes_mensalidade {
+  excecao_id      String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id        String           @db.Uuid
+  artigo_id       String?          @db.Uuid
+  mes_ref         DateTime         @db.Date
+  tipo_excecao_id String           @db.Uuid
+  dias_usados     Int?
+  valor_manual    Decimal?         @db.Decimal(12, 2)
+  observacao      String?
+  created_at      DateTime         @default(now()) @db.Timestamp(6)
+  updated_at      DateTime         @default(now()) @db.Timestamp(6)
+  alunos          alunos           @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  artigos_servico artigos_servico? @relation(fields: [artigo_id], references: [artigo_id], onUpdate: NoAction)
+  tipo_excecao    tipo_excecao     @relation(fields: [tipo_excecao_id], references: [tipo_excecao_id], onUpdate: NoAction)
+
+  @@index([aluno_id, mes_ref], map: "ix_exc_aluno_mes")
+}
+
+model import_logs {
+  import_id    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tipo         String
+  filename     String?
+  total_linhas Int?
+  ok           Int?
+  falhas       Int?
+  detalhes     Json?
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+}
+
+model mensalidades {
+  mensalidade_id         String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id               String                   @db.Uuid
+  ano_lectivo_id         String                   @db.Uuid
+  mes                    Int
+  viagens_dia            Int                      @default(1)
+  valor_previsto         Decimal                  @default(0) @db.Decimal(12, 2)
+  status                 String                   @default("pendente") @db.VarChar(20)
+  vencimento             DateTime?                @db.Date
+  referencia             String?                  @db.VarChar(100)
+  created_at             DateTime                 @default(now()) @db.Timestamp(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamp(6)
+  alunos                 alunos                   @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  ano_lectivo            ano_lectivo              @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onUpdate: NoAction)
+  movimentos_mensalidade movimentos_mensalidade[]
+
+  @@unique([aluno_id, ano_lectivo_id, mes], map: "ux_mensalidade_unique")
+  // ...
+  @@index([aluno_id, ano_lectivo_id, mes], map: "ix_mensalidade_aluno_mes")
+}
+
+model movimentos_mensalidade {
+  movimento_id      String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  mensalidade_id    String       @db.Uuid
+  origem            String       @default("sistema") @db.VarChar(20)
+  ref_origem_id     String?      @db.Uuid
+  tipo_movimento_id String?      @db.Uuid
+  valor             Decimal      @db.Decimal(12, 2)
+  descricao         String?
+  created_at        DateTime     @default(now()) @db.Timestamp(6)
+  mensalidades      mensalidades @relation(fields: [mensalidade_id], references: [mensalidade_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([mensalidade_id], map: "ix_mov_mensalidade")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notificacoes_envio {
+  envio_id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  notificacao_uuid    String    @db.Uuid
+  canal               String
+  destinatario        String
+  mensagem            String
+  status              String    @default("pendente")
+  provider_message_id String?
+  tentativas          Int       @default(0)
+  erro                String?
+  enviado_em          DateTime? @db.Timestamp(6)
+  entregue_em         DateTime? @db.Timestamp(6)
+  lido_em             DateTime? @db.Timestamp(6)
+  created_at          DateTime? @default(now()) @db.Timestamp(6)
+  updated_at          DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([destinatario], map: "ix_envio_dest")
+  @@index([notificacao_uuid], map: "ix_envio_notif")
+  @@index([status], map: "ix_envio_status")
+  @@index([created_at], map: "ix_notif_envio_created")
+  @@index([status], map: "ix_notif_envio_status")
+}
+
+model pagamentos_izipay {
+  id                       Int       @id @default(autoincrement())
+  entidade                 String?   @db.VarChar(100)
+  pagamento_id             Int?
+  data                     DateTime? @default(now()) @db.Timestamp(6)
+  pago                     Boolean?  @default(false)
+  referencia               String?   @db.VarChar(50)
+  id_terminal              String?   @db.VarChar(50)
+  id_transacao             String?   @db.VarChar(100)
+  tipo_terminal            String?   @db.VarChar(50)
+  local_terminal           String?   @db.VarChar(100)
+  periodo_contabilistico   String?   @db.VarChar(20)
+  tarifa_emis              Decimal?  @db.Decimal(10, 2)
+  tarifa_izipay            Decimal?  @db.Decimal(10, 2)
+  estado                   String?   @db.VarChar(30)
+  criado_em                DateTime? @default(now()) @db.Timestamp(6)
+  atualizado_em            DateTime? @default(now()) @db.Timestamp(6)
+  data_emissao             DateTime? @db.Timestamp(6)
+  data_validade            DateTime? @db.Timestamp(6)
+  company                  String?   @db.VarChar(100)
+  reference_payment_id     String?   @db.Uuid
+  reference                String?
+  value_cents              Int?
+  payed_at                 DateTime? @db.Timestamp(6)
+  reference_action_type_id Int?
+  payload                  Json?
+  attempts                 Int?      @default(0)
+  status                   String?   @default("pending") @db.VarChar(20)
+  finish_at                DateTime? @db.Timestamp(6)
+  errors                   String?
+  created_at               DateTime? @default(now()) @db.Timestamp(6)
+  updated_at               DateTime? @default(now()) @db.Timestamp(6)
+  run_master_at            DateTime? @db.Timestamp(6)
+}
+
+model parametros_sistema {
+  chave      String   @id @db.VarChar(80)
+  valor      String   @db.VarChar(200)
+  descricao  String?
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+}
+
+model partidas_programadas {
+  partida_prog_id  String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  data_ref         DateTime        @db.Date
+  viagem_id        String          @db.Uuid
+  servico_id       String          @db.Uuid
+  rota_id          String          @db.Uuid
+  hora_prevista    DateTime        @db.Time(6)
+  cais_id          String?         @db.Uuid
+  status           String          @default("planejada") @db.VarChar(20)
+  created_at       DateTime        @default(now()) @db.Timestamp(6)
+  updated_at       DateTime        @default(now()) @db.Timestamp(6)
+  uuid_publico     String?         @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  data             DateTime?       @default(dbgenerated("CURRENT_DATE")) @db.Date
+  horario_previsto DateTime?       @db.Time(6)
+  observacao       String?
+  cais             cais?           @relation(fields: [cais_id], references: [cais_id], onUpdate: NoAction)
+  rotas            rotas           @relation(fields: [rota_id], references: [rota_id], onUpdate: NoAction)
+  servicos         servicos        @relation(fields: [servico_id], references: [servico_id], onUpdate: NoAction)
+  viagens          viagens         @relation(fields: [viagem_id], references: [viagem_id], onDelete: Cascade, onUpdate: NoAction)
+  partidas_reais   partidas_reais?
+
+  @@unique([data_ref, viagem_id])
+  @@index([data_ref, hora_prevista], map: "ix_partidas_programadas")
+}
+
+model partidas_reais {
+  partida_real_id      String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  partida_prog_id      String               @unique(map: "ux_partida_real_prog") @db.Uuid
+  hora_real            DateTime?            @db.Timestamp(6)
+  atraso_min           Int?
+  obs                  String?
+  created_at           DateTime             @default(now()) @db.Timestamp(6)
+  updated_at           DateTime             @default(now()) @db.Timestamp(6)
+  uuid_publico         String?              @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  partida_id           String?              @db.Uuid
+  viagem_id            String?              @db.Uuid
+  data                 DateTime?            @default(dbgenerated("CURRENT_DATE")) @db.Date
+  partida_em           DateTime?            @db.Timestamp(6)
+  chegada_em           DateTime?            @db.Timestamp(6)
+  cancelada            Boolean?             @default(false)
+  motivo_cancelamento  String?
+  partidas_programadas partidas_programadas @relation(fields: [partida_prog_id], references: [partida_prog_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model planos {
+  plano_id    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome        String   @unique(map: "ux_planos_nome") @db.VarChar(80)
+  viagens_dia Int
+  descricao   String?
+  ativo       Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model precos_rota {
+  preco_rota_id  String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  rota_id        String      @db.Uuid
+  ano_lectivo_id String      @db.Uuid
+  viagens_dia    Int
+  preco_mensal   Decimal     @db.Decimal(12, 2)
+  created_at     DateTime    @default(now()) @db.Timestamp(6)
+  updated_at     DateTime    @default(now()) @db.Timestamp(6)
+  ano_lectivo    ano_lectivo @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onDelete: Cascade, onUpdate: NoAction)
+  rotas          rotas       @relation(fields: [rota_id], references: [rota_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([rota_id, ano_lectivo_id, viagens_dia])
+}
+
+model tipo_estado {
+  tipo_estado_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  estado         String   @unique @db.VarChar(40)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+}
+
+model tipo_excecao {
+  tipo_excecao_id      String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  descricao            String                 @unique @db.VarChar(80)
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  updated_at           DateTime               @default(now()) @db.Timestamp(6)
+  excecoes_mensalidade excecoes_mensalidade[]
+}
+
+model tipo_inscricao {
+  tipo_inscricao_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  descricao         String   @unique @db.VarChar(80)
+  created_at        DateTime @default(now()) @db.Timestamp(6)
+  updated_at        DateTime @default(now()) @db.Timestamp(6)
+}
+
+model tipo_movimento {
+  tipo_movimento_id   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  descricao           String                @unique @db.VarChar(80)
+  created_at          DateTime              @default(now()) @db.Timestamp(6)
+  updated_at          DateTime              @default(now()) @db.Timestamp(6)
+  ajustes_mensalidade ajustes_mensalidade[]
+}
+
+model transacoes_izipay {
+  id                       Int       @id @default(autoincrement())
+  company                  String    @db.VarChar(100)
+  reference_payment_id     String    @db.Uuid
+  reference                String?   @db.VarChar(50)
+  value                    Decimal?  @db.Decimal(12, 2)
+  payed_at                 DateTime? @db.Timestamp(6)
+  reference_action_type_id Int?
+  client_id                String?   @db.VarChar(50)
+  client_name              String?   @db.VarChar(200)
+  client_type_id           Int?
+  item_id                  String?   @db.VarChar(50)
+  state                    Int?
+  section                  String?   @db.VarChar(10)
+  tarifa_suplitel          Decimal?  @db.Decimal(10, 2)
+  attempts                 Int?      @default(0)
+  status                   String?   @default("pending") @db.VarChar(30)
+  finish_at                DateTime? @db.Timestamp(6)
+  errors                   String?
+  created_at               DateTime? @default(now()) @db.Timestamp(6)
+  updated_at               DateTime? @default(now()) @db.Timestamp(6)
+  run_master_at            DateTime? @db.Timestamp(6)
+}
+
+model storage_config {
+  id          Int      @id @default(autoincrement())
+  provider    String // "cloudinary" | "aws_s3" | "firebase" | "local"
+  cloud_name  String? // Cloudinary
+  api_key     String?
+  api_secret  String?
+  bucket_name String? // S3/GCS
+  base_folder String?
+  is_active   Boolean  @default(false)
+  updated_at  DateTime @updatedAt
+  created_at  DateTime @default(now())
+}
+
+// =====================
+// Perfis
+// =====================
+model perfis {
+  perfil_id     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome          String   @unique @db.VarChar(50)
+  descricao     String?
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @db.Timestamp(6)
+
+  utilizadores      utilizadores[]
+  perfil_permissoes perfil_permissoes[]
+}
+
+// =====================
+// Permissões
+// =====================
+model permissoes {
+  permissao_id      String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome              String              @unique @db.VarChar(50)
+  descricao         String?
+  criado_em         DateTime            @default(now()) @db.Timestamp(6)
+  perfil_permissoes perfil_permissoes[]
+}
+
+// =====================
+// Relação entre perfis e permissões (N:N)
+// =====================
+model perfil_permissoes {
+  id           String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  perfil_id    String @db.Uuid
+  permissao_id String @db.Uuid
+
+  perfis     perfis     @relation(fields: [perfil_id], references: [perfil_id], onDelete: Cascade)
+  permissoes permissoes @relation(fields: [permissao_id], references: [permissao_id], onDelete: Cascade)
+
+  @@unique([perfil_id, permissao_id])
+}
+
+// =====================
+// Utilizadores do sistema
+// =====================
+model utilizadores {
+  utilizador_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome          String   @db.VarChar(100)
+  email         String?  @unique @db.VarChar(100)
+  telefone      String?  @unique @db.VarChar(20)
+  senha_hash    String   @db.VarChar(255)
+  ativo         Boolean  @default(true)
+  perfil_id     String?  @db.Uuid
+  perfis        perfis?  @relation(fields: [perfil_id], references: [perfil_id], onDelete: SetNull)
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @db.Timestamp(6)
+
+  tokens_api  tokens_api[]
+  ocorrencias ocorrencias[]
+}
+
+// =====================
+// Tokens de autenticação
+// =====================
+model tokens_api {
+  token_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  utilizador_id String    @db.Uuid
+  token         String    @unique @db.VarChar(500)
+  tipo          String    @default("jwt") @db.VarChar(20)
+  expiracao     DateTime?
+  valido        Boolean   @default(true)
+  criado_em     DateTime  @default(now()) @db.Timestamp(6)
+
+  utilizadores utilizadores @relation(fields: [utilizador_id], references: [utilizador_id], onDelete: Cascade)
+}
+
+// =====================
+// Ocorrências (problemas, acidentes, situações)
+// =====================
+model ocorrencias {
+  ocorrencia_id  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tipo           String   @db.VarChar(50) // Ex: 'acidente', 'documentacao', 'transporte', etc.
+  descricao      String?
+  data           DateTime @default(now()) @db.Timestamp(6)
+  foto_url       String?
+  foto_public_id String?
+  motorista_id   String?  @db.Uuid
+  vigilante_id   String?  @db.Uuid
+  viatura_id     String?  @db.Uuid
+  aluno_id       String?  @db.Uuid
+  viagem_id      String?  @db.Uuid // 🔹 ADICIONADO — para ligar à tabela viagens
+  estado         String?  @default("pendente") @db.VarChar(20)
+  prioridade     String?  @default("normal") @db.VarChar(20)
+  resolvido      Boolean  @default(false)
+  criado_por_id  String?  @db.Uuid // utilizador que registrou
+  criado_em      DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime @default(now()) @db.Timestamp(6)
+
+  motoristas   motoristas?   @relation(fields: [motorista_id], references: [motorista_id], onDelete: SetNull)
+  vigilantes   vigilantes?   @relation(fields: [vigilante_id], references: [vigilante_id], onDelete: SetNull)
+  viaturas     viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
+  alunos       alunos?       @relation(fields: [aluno_id], references: [aluno_id], onDelete: SetNull)
+  viagens      viagens?      @relation(fields: [viagem_id], references: [viagem_id], onDelete: SetNull) // 🔹 ADICIONADO
+  utilizadores utilizadores? @relation(fields: [criado_por_id], references: [utilizador_id], onDelete: SetNull)
+}
+
+model viaturas {
+  viatura_id    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  matricula     String   @unique @db.VarChar(20)
+  marca         String   @db.VarChar(50)
+  modelo        String?  @db.VarChar(50)
+  ano           Int?
+  combustivel   String?  @db.VarChar(20)
+  lotacao       Int?     @default(0)
+  ativo         Boolean  @default(true)
+  criado_em     DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime @default(now()) @db.Timestamp(6)
+
+  motoristas  motoristas[]
+  vigilantes  vigilantes[]
+  ocorrencias ocorrencias[]
+  viagens     viagens[]     @relation("ViaturaViagem")
+}
+
+model motoristas {
+  motorista_id   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome           String    @db.VarChar(100)
+  telefone       String   @unique @db.VarChar(20)
+  senha          String?  @db.VarChar(100)
+  numero_carta   String    @db.VarChar(50)
+  validade_carta DateTime?
+  numero_bi      String?   @db.VarChar(30)
+  idade          Int?
+  foto_url       String?
+  foto_public_id String?
+  viatura_id     String?   @db.Uuid
+  ativo          Boolean   @default(true)
+  criado_em      DateTime  @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime  @default(now()) @db.Timestamp(6)
+
+  viaturas    viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
+  ocorrencias ocorrencias[]
+  alertas_motorista alertas_motorista[]
+}
+
+model vigilantes {
+  vigilante_id   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome           String   @db.VarChar(100)
+  numero_bi      String?  @db.VarChar(30)
+  idade          Int?
+  foto_url       String?
+  foto_public_id String?
+  viatura_id     String?  @db.Uuid
+  ativo          Boolean  @default(true)
+  criado_em      DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime @default(now()) @db.Timestamp(6)
+
+  viaturas    viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
+  ocorrencias ocorrencias[]
+}
+
+model encarregados_token {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  encarregado_id String   @db.Uuid
+  token          String   @db.VarChar(300)
+  plataforma     String?  @db.VarChar(20)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+
+  encarregados encarregados @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: Cascade)
+
+  @@unique([encarregado_id, token], map: "ux_encarregado_token")
+}
+
+model comunicados {
+  comunicado_id   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  titulo          String   @db.VarChar(140)
+  mensagem        String
+  publico_alvo    String?  @default("pais") @db.VarChar(20) // pais | motoristas | todos
+  ativo           Boolean  @default(true)
+  data_publicacao DateTime @default(now()) @db.Timestamp(6)
+}
+
+model comunicados_leitura {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  comunicado_id  String   @db.Uuid
+  encarregado_id String   @db.Uuid
+  lido_em        DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([comunicado_id, encarregado_id], map: "ux_comunicado_lido")
+}
+
+model alertas_motorista {
+  alerta_id     String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  motorista_id  String     @db.Uuid
+  viagem_id     String     @db.Uuid
+  mensagem      String
+  tipo_alerta   String?   @db.VarChar(50)    // 👈 adiciona esta linha
+  enviado       Boolean   @default(false)        // 👈 ADICIONA ESTA LINHA
+  lido          Boolean    @default(false)
+  criado_em     DateTime   @default(now()) @db.Timestamp(6)
+
+  motoristas    motoristas @relation(fields: [motorista_id], references: [motorista_id], onDelete: Cascade)
+  viagens       viagens    @relation(fields: [viagem_id], references: [viagem_id], onDelete: Cascade)
+}
+model parametros_alertas {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome          String   @unique @db.VarChar(100)
+  valor         String   @db.VarChar(100)
+  descricao     String?  @db.VarChar(255)
+  atualizado_em DateTime @default(now()) @db.Timestamp(6)
+}
+
+
