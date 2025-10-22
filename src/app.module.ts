@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module'; // ← ADICIONAR
 
 // núcleo
 import { PrismaModule } from './prisma/prisma.module';
@@ -48,6 +49,7 @@ import { CronModule } from './cron/cron.module';
     UploadModule,
     StorageModule,
     UtilizadoresModule,
+    AuthModule, // ← ADICIONAR AQUI
     PerfisModule,
     OcorrenciasModule,
     ViaturasModule,
