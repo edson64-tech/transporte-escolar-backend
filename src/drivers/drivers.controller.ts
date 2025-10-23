@@ -10,7 +10,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 export class DriversController {
   constructor(private readonly svc: DriversService) {}
 
-  // ✅ LOGIN - PÚBLICO (sem proteção)
+  // ✅ PÚBLICO - Login (sem proteção)
   @Post('login')
   @ApiOperation({ summary: 'Login do motorista' })
   async login(@Body() body: { telefone: string; senha: string }) {
@@ -22,7 +22,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar agenda de viagens do motorista' })
+  @ApiOperation({ summary: 'Listar agenda de viagens do motorista (PROTEGIDO)' })
   async agenda(@Param('motorista_id') motorista_id: string) {
     return this.svc.getAgenda(motorista_id);
   }
@@ -32,7 +32,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Iniciar viagem' })
+  @ApiOperation({ summary: 'Iniciar viagem (PROTEGIDO)' })
   async start(@Param('viagem_id') viagem_id: string) {
     return this.svc.startViagem(viagem_id);
   }
@@ -42,7 +42,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Finalizar viagem' })
+  @ApiOperation({ summary: 'Finalizar viagem (PROTEGIDO)' })
   async stop(@Param('viagem_id') viagem_id: string) {
     return this.svc.stopViagem(viagem_id);
   }
@@ -52,7 +52,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Registrar embarque/desembarque de aluno' })
+  @ApiOperation({ summary: 'Registrar embarque/desembarque (PROTEGIDO)' })
   async embarque(@Body() body: any) {
     return this.svc.registarEmbarque(body);
   }
@@ -62,7 +62,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reportar posição GPS' })
+  @ApiOperation({ summary: 'Reportar posição GPS (PROTEGIDO)' })
   async pos(@Body() body: { viagemCodigo: string; lat: number; lng: number }) {
     return this.svc.reportarPosicao(body.viagemCodigo, body.lat, body.lng);
   }
@@ -72,7 +72,7 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Buscar alertas do motorista' })
+  @ApiOperation({ summary: 'Buscar alertas (PROTEGIDO)' })
   async getAlerts(@Param('motorista_id') motorista_id: string) {
     return this.svc.getAlerts(motorista_id);
   }
@@ -82,14 +82,14 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MOTORISTA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Marcar alerta como lido' })
+  @ApiOperation({ summary: 'Marcar alerta como lido (PROTEGIDO)' })
   async markAlertSent(@Param('alerta_id') alerta_id: string) {
     return this.svc.markAlertSent(alerta_id);
   }
 
-  // ✅ PÚBLICO - Buscar motoristas próximos (PostGIS)
+  // ✅ PÚBLICO - Buscar motoristas próximos
   @Get('proximos')
-  @ApiOperation({ summary: 'Buscar motoristas próximos de uma localização' })
+  @ApiOperation({ summary: 'Buscar motoristas próximos (PÚBLICO)' })
   @ApiQuery({ name: 'lat', required: true, example: -8.8383 })
   @ApiQuery({ name: 'lng', required: true, example: 13.2344 })
   @ApiQuery({ name: 'raio', required: false, example: 5, description: 'Raio em KM' })
