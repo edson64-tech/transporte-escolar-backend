@@ -501,7 +501,11 @@ export class ParentsController {
 
   @Post('admin/ano-letivo')
   @ApiOperation({ summary: 'Criar ano letivo (ADMIN)' })
-  async adminCreateAnoLetivo(@Body() data: any) {
+  async adminCreateAnoLetivo(@Body() body: any) {
+    const data: any = { ...body };
+    if (!data.data_inicio) data.data_inicio = new Date(`${data.ano_inicio}-01-01`);
+    if (!data.data_fim) data.data_fim = new Date(`${data.ano_inicio}-12-31`);
+    delete data.ano_fim; // Campo não existe no schema
     return await this.prisma.ano_lectivo.create({ data });
   }
 
@@ -510,6 +514,8 @@ export class ParentsController {
   async adminUpdateAnoLetivo(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.ano_lectivo.findUnique({ where: { ano_lectivo_id: id } });
     if (!existe) throw new NotFoundException('Ano letivo não encontrado');
+    if (data.ano_inicio && !data.data_inicio) data.data_inicio = new Date(`${data.ano_inicio}-01-01`);
+    if (data.ano_inicio && !data.data_fim) data.data_fim = new Date(`${data.ano_inicio}-12-31`);
     return await this.prisma.ano_lectivo.update({ where: { ano_lectivo_id: id }, data });
   }
 
