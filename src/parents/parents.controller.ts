@@ -1,14 +1,22 @@
-import { Controller, Get, Param, Query, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, UseGuards, Put, Delete, NotFoundException } from '@nestjs/common';
 import { ParentsService } from './parents.service';
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('Pais/Encarregados (App Pais)')
 @Controller('parents')
 export class ParentsController {
-  constructor(private readonly svc: ParentsService) {}
+  constructor(
+    private readonly svc: ParentsService,
+    private readonly prisma: PrismaService
+  ) {}
+
+  // ============================================================
+  // 📱 ENDPOINTS DO APP MÓVEL (PROTEGIDOS)
+  // ============================================================
 
   // 🔐 PROTEGIDO - Só encarregado autenticado
   @Get('students')
@@ -80,5 +88,129 @@ export class ParentsController {
       parseFloat(lng),
       raio ? parseFloat(raio) : 2
     );
+  }
+
+  // ============================================================
+  // 🔐 ENDPOINTS ADMINISTRATIVOS - CRUD DE ALUNOS
+  // ============================================================
+
+  @Get('admin/alunos')
+  @ApiOperation({ summary: 'Listar todos os alunos (ADMIN)' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  async adminListAlunos(@Query() query: any) {
+    const { page = 1, limit = 50, search } = query;
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { nome: { contains: search, mode: 'insensitive' } },
+        { codigo_aluno: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    const [data, total] = await Promise.all([
+      this.prisma.alunos.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          encarregados: {
+            select: { nome: true, telefone: true, email: true },
+          },
+        },
+        orderBy: { nome: 'asc' },
+      }),
+      this.prisma.alunos.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    };
+  }
+
+  @Get('admin/alunos/:id')
+  @ApiOperation({ summary: 'Ver detalhes de um aluno (ADMIN)' })
+  async adminGetAluno(@Param('id') id: string) {
+    const aluno = await this.prisma.alunos.findUnique({
+      where: { aluno_id: id },
+      include: {
+        encarregados: true,
+        adesoes_servico: {
+          include: { rotas: true },
+        },
+        pagamentos: {
+          take: 10,
+          orderBy: { data_pagamento: 'desc' },
+        },
+      },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    return aluno;
+  }
+
+  @Post('admin/alunos')
+  @ApiOperation({ summary: 'Criar novo aluno (ADMIN)' })
+  async adminCreateAluno(@Body() data: any) {
+    return await this.prisma.alunos.create({
+      data: {
+        ...data,
+        status: data.status || 'ativo',
+        ativo: true,
+      },
+      include: {
+        encarregados: {
+          select: { nome: true, telefone: true },
+        },
+      },
+    });
+  }
+
+  @Put('admin/alunos/:id')
+  @ApiOperation({ summary: 'Atualizar aluno (ADMIN)' })
+  async adminUpdateAluno(@Param('id') id: string, @Body() data: any) {
+    const existe = await this.prisma.alunos.findUnique({
+      where: { aluno_id: id },
+    });
+
+    if (!existe) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    return await this.prisma.alunos.update({
+      where: { aluno_id: id },
+      data,
+    });
+  }
+
+  @Delete('admin/alunos/:id')
+  @ApiOperation({ summary: 'Desativar aluno (ADMIN)' })
+  async adminDeleteAluno(@Param('id') id: string) {
+    const existe = await this.prisma.alunos.findUnique({
+      where: { aluno_id: id },
+    });
+
+    if (!existe) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    return await this.prisma.alunos.update({
+      where: { aluno_id: id },
+      data: { ativo: false, status: 'inativo' },
+    });
   }
 }
