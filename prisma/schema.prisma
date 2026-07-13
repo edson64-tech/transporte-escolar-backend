@@ -956,3 +956,74 @@ model tokens_assinatura {
 
   @@index([aluno_id], map: "tokens_assinatura_aluno_idx")
 }
+
+model erp_agentes {
+  agente_id        String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome             String     @db.VarChar(120)
+  chave_hash       String     @unique @db.VarChar(64)
+  versao           String?    @db.VarChar(20)
+  ultimo_heartbeat DateTime?  @db.Timestamptz(6)
+  ativo            Boolean    @default(true)
+  criado_em        DateTime   @default(now()) @db.Timestamptz(6)
+  erp_jobs         erp_jobs[]
+}
+
+model erp_documentos {
+  documento_id     String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  mensalidade_id   String       @unique @db.Uuid
+  aluno_id         String       @db.Uuid
+  empresa_id       String       @db.Uuid
+  job_id           String?      @db.Uuid
+  numero_documento String?      @db.VarChar(60)
+  valor            Decimal?     @db.Decimal(14, 2)
+  estado           String       @default("pendente") @db.VarChar(20)
+  pdf_url          String?
+  pdf_public_id    String?
+  erro             String?
+  criado_em        DateTime     @default(now()) @db.Timestamptz(6)
+  emitido_em       DateTime?    @db.Timestamptz(6)
+  erp_empresas     erp_empresas @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  erp_jobs         erp_jobs?    @relation(fields: [job_id], references: [job_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([aluno_id], map: "idx_erp_documentos_aluno")
+}
+
+model erp_empresas {
+  empresa_id      String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome            String           @db.VarChar(120)
+  codigo_empresa  String           @db.VarChar(30)
+  instancia       String           @default("DEFAULT") @db.VarChar(30)
+  linha           String           @default("Executivo") @db.VarChar(20)
+  api_username    String           @db.VarChar(60)
+  api_password    String
+  serie           String?          @db.VarChar(20)
+  tipo_documento  String           @default("FR") @db.VarChar(10)
+  cod_iva_default String?          @db.VarChar(10)
+  modo_teste      Boolean          @default(true)
+  ativa           Boolean          @default(true)
+  criado_em       DateTime         @default(now()) @db.Timestamptz(6)
+  atualizado_em   DateTime         @default(now()) @db.Timestamptz(6)
+  erp_documentos  erp_documentos[]
+  erp_jobs        erp_jobs[]
+
+  @@unique([codigo_empresa, instancia])
+}
+
+model erp_jobs {
+  job_id         String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tipo           String           @db.VarChar(30)
+  empresa_id     String           @db.Uuid
+  payload        Json
+  estado         String           @default("pendente") @db.VarChar(20)
+  tentativas     Int              @default(0)
+  max_tentativas Int              @default(5)
+  resultado      Json?
+  erro           String?
+  agente_id      String?          @db.Uuid
+  criado_em      DateTime         @default(now()) @db.Timestamptz(6)
+  iniciado_em    DateTime?        @db.Timestamptz(6)
+  concluido_em   DateTime?        @db.Timestamptz(6)
+  erp_documentos erp_documentos[]
+  erp_agentes    erp_agentes?     @relation(fields: [agente_id], references: [agente_id], onDelete: NoAction, onUpdate: NoAction)
+  erp_empresas   erp_empresas     @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+}

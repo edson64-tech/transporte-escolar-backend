@@ -1,5 +1,4 @@
-import { Controller, Post, Param } from '@nestjs/common';
-import { UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -13,8 +12,22 @@ import { ErpService } from './erp.service';
 export class ErpController {
   constructor(private readonly svc: ErpService) {}
 
-  @Post('fatura/:mensalidade_id')
-  async emitir(@Param('mensalidade_id') mensalidadeId: string) {
-    return this.svc.emitirFaturaPorMensalidade(mensalidadeId);
+  // Empresas
+  @Post('empresas') criarEmpresa(@Body() dto: any) { return this.svc.criarEmpresa(dto); }
+  @Get('empresas') listarEmpresas() { return this.svc.listarEmpresas(); }
+  @Put('empresas/:id') atualizarEmpresa(@Param('id') id: string, @Body() dto: any) { return this.svc.atualizarEmpresa(id, dto); }
+
+  // Agentes
+  @Post('agentes') criarAgente(@Body() b: { nome: string }) { return this.svc.criarAgente(b.nome); }
+  @Get('agentes') listarAgentes() { return this.svc.listarAgentes(); }
+
+  // Fila
+  @Get('jobs') listarJobs(@Query('estado') estado?: string) { return this.svc.listarJobs(estado); }
+  @Post('empresas/:id/testar-ligacao') testar(@Param('id') id: string) { return this.svc.enfileirarTesteLigacao(id); }
+
+  // Emissão manual (mensalidade + empresa)
+  @Post('fatura/:mensalidade_id/:empresa_id')
+  emitir(@Param('mensalidade_id') m: string, @Param('empresa_id') e: string) {
+    return this.svc.emitirFaturaPorMensalidade(m, e);
   }
 }
