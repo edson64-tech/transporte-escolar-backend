@@ -17,8 +17,7 @@ model aluno_viagem {
   alunos          alunos?   @relation(fields: [aluno_id], references: [aluno_id], onDelete: NoAction, onUpdate: NoAction)
   viagens         viagens?  @relation(fields: [viagem_id], references: [viagem_id], onDelete: NoAction, onUpdate: NoAction)
 
-  // ...
-  @@unique([aluno_id, viagem_id], map: "ux_aluno_viagem") // evita duplicação de embarque
+  @@unique([aluno_id, viagem_id], map: "ux_aluno_viagem")
 }
 
 model alunos {
@@ -35,18 +34,47 @@ model alunos {
   home_lat             Float?
   home_lng             Float?
   home_geom            Unsupported("geometry")?
+  foto_url             String?
+  foto_public_id       String?
+  cod_cliente          String?
+  cartao_transporte    String?                  @db.VarChar(60)
+  e_creche             Boolean?                 @default(false)
+  motivo_estado        String?                  @default("normal") @db.VarChar(30)
+  recolha_lat          Float?
+  recolha_lng          Float?
+  regresso_lat         Float?
+  regresso_lng         Float?
+  num_documento        String?                  @db.VarChar(40)
+  tipo_documento       String?                  @db.VarChar(20)
+  data_nascimento      DateTime?                @db.Date
+  sexo                 String?                  @db.VarChar(10)
+  naturalidade         String?                  @db.VarChar(80)
+  sala                 String?                  @db.VarChar(30)
+  turma                String?                  @db.VarChar(30)
+  classe               String?                  @db.VarChar(30)
+  morada               String?                  @db.VarChar(200)
+  nome_pai             String?                  @db.VarChar(120)
+  contacto_pai         String?                  @db.VarChar(20)
+  nome_mae             String?                  @db.VarChar(120)
+  contacto_mae         String?                  @db.VarChar(20)
+  endereco_recolha     String?                  @db.VarChar(200)
+  endereco_regresso    String?                  @db.VarChar(200)
+  faturacao_nif        String?                  @db.VarChar(30)
+  faturacao_nome       String?                  @db.VarChar(150)
+  faturacao_email      String?                  @db.VarChar(120)
   adesoes_servico      adesoes_servico[]
   ajustes_mensalidade  ajustes_mensalidade[]
   aluno_viagem         aluno_viagem[]
   encarregados         encarregados?            @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: NoAction, onUpdate: NoAction)
+  anexos_aluno         anexos_aluno[]
+  autorizacoes_entrega autorizacoes_entrega[]
   contratos_servico    contratos_servico[]
   encarregados_alunos  encarregados_alunos[]
   excecoes_mensalidade excecoes_mensalidade[]
   mensalidades         mensalidades[]
-  pagamentos           pagamentos[]
-  foto_url             String?
-  foto_public_id       String?
   ocorrencias          ocorrencias[]
+  pagamentos           pagamentos[]
+  tokens_assinatura    tokens_assinatura[]
 }
 
 model encarregados {
@@ -61,10 +89,13 @@ model encarregados {
 }
 
 model escolas {
-  escola_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome      String  @db.VarChar(100)
+  escola_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome      String    @db.VarChar(100)
   endereco  String?
+  lat       Float?
+  lng       Float?
   campi     campi[]
+  paineis   paineis[]
   rotas     rotas[]
 }
 
@@ -78,7 +109,6 @@ model gps_viagem {
   estado       String?                  @default("em_rota") @db.VarChar(20)
   viagens      viagens?                 @relation(fields: [viagem_id], references: [viagem_id], onDelete: NoAction, onUpdate: NoAction)
 
-  // ... (teu conteúdo atual)
   @@index([viagem_id, timestamp], map: "ix_gps_viagem_ts")
 }
 
@@ -123,7 +153,6 @@ model pagamentos {
   status         String?   @default("pendente") @db.VarChar(20)
   alunos         alunos?   @relation(fields: [aluno_id], references: [aluno_id], onDelete: NoAction, onUpdate: NoAction)
 
-  // ...
   @@index([aluno_id, mes], map: "ix_pagamento_aluno_mes")
 }
 
@@ -171,14 +200,19 @@ model viagens {
   motorista_id         String?                @db.Uuid
   vigilante_id         String?                @db.Uuid
   data                 DateTime?              @default(now()) @db.Timestamp(6)
+  tipo                 String?                @default("recolha") @db.VarChar(20)
+  partida_lat          Float?
+  partida_lng          Float?
+  destino_lat          Float?
+  destino_lng          Float?
+  alertas_motorista    alertas_motorista[]
   aluno_viagem         aluno_viagem[]
   gps_viagem           gps_viagem[]
   ocorrencias          ocorrencias[]
   partidas_programadas partidas_programadas[]
   rotas                rotas?                 @relation(fields: [rota_id], references: [rota_id], onDelete: NoAction, onUpdate: NoAction)
   servicos             servicos?              @relation(fields: [servico_id], references: [servico_id], onDelete: NoAction, onUpdate: NoAction)
-  viaturas             viaturas?              @relation("ViaturaViagem", fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
-  alertas_motorista alertas_motorista[]
+  viaturas             viaturas?              @relation("ViaturaViagem", fields: [viatura_id], references: [viatura_id])
 }
 
 model adesoes_servico {
@@ -228,6 +262,7 @@ model ano_lectivo {
   adesoes_servico   adesoes_servico[]
   contratos_servico contratos_servico[]
   mensalidades      mensalidades[]
+  precos_mes        precos_mes[]
   precos_rota       precos_rota[]
 }
 
@@ -362,12 +397,12 @@ model mensalidades {
   referencia             String?                  @db.VarChar(100)
   created_at             DateTime                 @default(now()) @db.Timestamp(6)
   updated_at             DateTime                 @default(now()) @db.Timestamp(6)
+  tipo                   String                   @default("mensalidade") @db.VarChar(20)
   alunos                 alunos                   @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
   ano_lectivo            ano_lectivo              @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onUpdate: NoAction)
   movimentos_mensalidade movimentos_mensalidade[]
 
   @@unique([aluno_id, ano_lectivo_id, mes], map: "ux_mensalidade_unique")
-  // ...
   @@index([aluno_id, ano_lectivo_id, mes], map: "ix_mensalidade_aluno_mes")
 }
 
@@ -541,6 +576,7 @@ model tipo_inscricao {
   descricao         String   @unique @db.VarChar(80)
   created_at        DateTime @default(now()) @db.Timestamp(6)
   updated_at        DateTime @default(now()) @db.Timestamp(6)
+  valor             Decimal? @default(0) @db.Decimal(12, 2)
 }
 
 model tipo_movimento {
@@ -577,34 +613,27 @@ model transacoes_izipay {
 
 model storage_config {
   id          Int      @id @default(autoincrement())
-  provider    String // "cloudinary" | "aws_s3" | "firebase" | "local"
-  cloud_name  String? // Cloudinary
+  provider    String
+  cloud_name  String?
   api_key     String?
   api_secret  String?
-  bucket_name String? // S3/GCS
+  bucket_name String?
   base_folder String?
   is_active   Boolean  @default(false)
   updated_at  DateTime @updatedAt
   created_at  DateTime @default(now())
 }
 
-// =====================
-// Perfis
-// =====================
 model perfis {
-  perfil_id     String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome          String   @unique @db.VarChar(50)
-  descricao     String?
-  criado_em     DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em DateTime @default(now()) @db.Timestamp(6)
-
-  utilizadores      utilizadores[]
+  perfil_id         String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome              String              @unique @db.VarChar(50)
+  descricao         String?
+  criado_em         DateTime            @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime            @default(now()) @db.Timestamp(6)
   perfil_permissoes perfil_permissoes[]
+  utilizadores      utilizadores[]
 }
 
-// =====================
-// Permissões
-// =====================
 model permissoes {
   permissao_id      String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   nome              String              @unique @db.VarChar(50)
@@ -613,147 +642,128 @@ model permissoes {
   perfil_permissoes perfil_permissoes[]
 }
 
-// =====================
-// Relação entre perfis e permissões (N:N)
-// =====================
 model perfil_permissoes {
-  id           String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  perfil_id    String @db.Uuid
-  permissao_id String @db.Uuid
-
-  perfis     perfis     @relation(fields: [perfil_id], references: [perfil_id], onDelete: Cascade)
-  permissoes permissoes @relation(fields: [permissao_id], references: [permissao_id], onDelete: Cascade)
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  perfil_id    String     @db.Uuid
+  permissao_id String     @db.Uuid
+  perfis       perfis     @relation(fields: [perfil_id], references: [perfil_id], onDelete: Cascade)
+  permissoes   permissoes @relation(fields: [permissao_id], references: [permissao_id], onDelete: Cascade)
 
   @@unique([perfil_id, permissao_id])
 }
 
-// =====================
-// Utilizadores do sistema
-// =====================
 model utilizadores {
-  utilizador_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome          String   @db.VarChar(100)
-  email         String?  @unique @db.VarChar(100)
-  telefone      String?  @unique @db.VarChar(20)
-  senha_hash    String   @db.VarChar(255)
-  ativo         Boolean  @default(true)
-  perfil_id     String?  @db.Uuid
-  perfis        perfis?  @relation(fields: [perfil_id], references: [perfil_id], onDelete: SetNull)
-  criado_em     DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em DateTime @default(now()) @db.Timestamp(6)
-
-  tokens_api  tokens_api[]
-  ocorrencias ocorrencias[]
+  utilizador_id String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome          String        @db.VarChar(100)
+  email         String?       @unique @db.VarChar(100)
+  telefone      String?       @unique @db.VarChar(20)
+  senha_hash    String        @db.VarChar(255)
+  ativo         Boolean       @default(true)
+  perfil_id     String?       @db.Uuid
+  criado_em     DateTime      @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime      @default(now()) @db.Timestamp(6)
+  ocorrencias   ocorrencias[]
+  tokens_api    tokens_api[]
+  perfis        perfis?       @relation(fields: [perfil_id], references: [perfil_id])
 }
 
-// =====================
-// Tokens de autenticação
-// =====================
 model tokens_api {
-  token_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  utilizador_id String    @db.Uuid
-  token         String    @unique @db.VarChar(500)
-  tipo          String    @default("jwt") @db.VarChar(20)
+  token_id      String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  utilizador_id String       @db.Uuid
+  token         String       @unique @db.VarChar(500)
+  tipo          String       @default("jwt") @db.VarChar(20)
   expiracao     DateTime?
-  valido        Boolean   @default(true)
-  criado_em     DateTime  @default(now()) @db.Timestamp(6)
-
-  utilizadores utilizadores @relation(fields: [utilizador_id], references: [utilizador_id], onDelete: Cascade)
+  valido        Boolean      @default(true)
+  criado_em     DateTime     @default(now()) @db.Timestamp(6)
+  utilizadores  utilizadores @relation(fields: [utilizador_id], references: [utilizador_id], onDelete: Cascade)
 }
 
-// =====================
-// Ocorrências (problemas, acidentes, situações)
-// =====================
 model ocorrencias {
-  ocorrencia_id  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  tipo           String   @db.VarChar(50) // Ex: 'acidente', 'documentacao', 'transporte', etc.
+  ocorrencia_id  String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tipo           String        @db.VarChar(50)
   descricao      String?
-  data           DateTime @default(now()) @db.Timestamp(6)
+  data           DateTime      @default(now()) @db.Timestamp(6)
   foto_url       String?
   foto_public_id String?
-  motorista_id   String?  @db.Uuid
-  vigilante_id   String?  @db.Uuid
-  viatura_id     String?  @db.Uuid
-  aluno_id       String?  @db.Uuid
-  viagem_id      String?  @db.Uuid // 🔹 ADICIONADO — para ligar à tabela viagens
-  estado         String?  @default("pendente") @db.VarChar(20)
-  prioridade     String?  @default("normal") @db.VarChar(20)
-  resolvido      Boolean  @default(false)
-  criado_por_id  String?  @db.Uuid // utilizador que registrou
-  criado_em      DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em  DateTime @default(now()) @db.Timestamp(6)
-
-  motoristas   motoristas?   @relation(fields: [motorista_id], references: [motorista_id], onDelete: SetNull)
-  vigilantes   vigilantes?   @relation(fields: [vigilante_id], references: [vigilante_id], onDelete: SetNull)
-  viaturas     viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
-  alunos       alunos?       @relation(fields: [aluno_id], references: [aluno_id], onDelete: SetNull)
-  viagens      viagens?      @relation(fields: [viagem_id], references: [viagem_id], onDelete: SetNull) // 🔹 ADICIONADO
-  utilizadores utilizadores? @relation(fields: [criado_por_id], references: [utilizador_id], onDelete: SetNull)
+  motorista_id   String?       @db.Uuid
+  vigilante_id   String?       @db.Uuid
+  viatura_id     String?       @db.Uuid
+  aluno_id       String?       @db.Uuid
+  viagem_id      String?       @db.Uuid
+  estado         String?       @default("pendente") @db.VarChar(20)
+  prioridade     String?       @default("normal") @db.VarChar(20)
+  resolvido      Boolean       @default(false)
+  criado_por_id  String?       @db.Uuid
+  criado_em      DateTime      @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime      @default(now()) @db.Timestamp(6)
+  alunos         alunos?       @relation(fields: [aluno_id], references: [aluno_id])
+  utilizadores   utilizadores? @relation(fields: [criado_por_id], references: [utilizador_id])
+  motoristas     motoristas?   @relation(fields: [motorista_id], references: [motorista_id])
+  viagens        viagens?      @relation(fields: [viagem_id], references: [viagem_id])
+  viaturas       viaturas?     @relation(fields: [viatura_id], references: [viatura_id])
+  vigilantes     vigilantes?   @relation(fields: [vigilante_id], references: [vigilante_id])
 }
 
 model viaturas {
-  viatura_id    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  matricula     String   @unique @db.VarChar(20)
-  marca         String   @db.VarChar(50)
-  modelo        String?  @db.VarChar(50)
+  viatura_id    String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  matricula     String        @unique @db.VarChar(20)
+  marca         String        @db.VarChar(50)
+  modelo        String?       @db.VarChar(50)
   ano           Int?
-  combustivel   String?  @db.VarChar(20)
-  lotacao       Int?     @default(0)
-  ativo         Boolean  @default(true)
-  criado_em     DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em DateTime @default(now()) @db.Timestamp(6)
-
-  motoristas  motoristas[]
-  vigilantes  vigilantes[]
-  ocorrencias ocorrencias[]
-  viagens     viagens[]     @relation("ViaturaViagem")
+  combustivel   String?       @db.VarChar(20)
+  lotacao       Int?          @default(0)
+  ativo         Boolean       @default(true)
+  criado_em     DateTime      @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime      @default(now()) @db.Timestamp(6)
+  motoristas    motoristas[]
+  ocorrencias   ocorrencias[]
+  paineis       paineis[]
+  viagens       viagens[]     @relation("ViaturaViagem")
+  vigilantes    vigilantes[]
 }
 
 model motoristas {
-  motorista_id   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome           String    @db.VarChar(100)
-  telefone       String   @unique @db.VarChar(20)
-  senha          String?  @db.VarChar(100)
-  numero_carta   String    @db.VarChar(50)
-  validade_carta DateTime?
-  numero_bi      String?   @db.VarChar(30)
-  idade          Int?
-  foto_url       String?
-  foto_public_id String?
-  viatura_id     String?   @db.Uuid
-  ativo          Boolean   @default(true)
-  criado_em      DateTime  @default(now()) @db.Timestamp(6)
-  atualizado_em  DateTime  @default(now()) @db.Timestamp(6)
-
-  viaturas    viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
-  ocorrencias ocorrencias[]
+  motorista_id      String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome              String              @db.VarChar(100)
+  telefone          String              @unique @db.VarChar(20)
+  senha             String?             @db.VarChar(100)
+  numero_carta      String              @db.VarChar(50)
+  validade_carta    DateTime?
+  numero_bi         String?             @db.VarChar(30)
+  idade             Int?
+  foto_url          String?
+  foto_public_id    String?
+  viatura_id        String?             @db.Uuid
+  ativo             Boolean             @default(true)
+  criado_em         DateTime            @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime            @default(now()) @db.Timestamp(6)
   alertas_motorista alertas_motorista[]
+  viaturas          viaturas?           @relation(fields: [viatura_id], references: [viatura_id])
+  ocorrencias       ocorrencias[]
 }
 
 model vigilantes {
-  vigilante_id   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome           String   @db.VarChar(100)
-  numero_bi      String?  @db.VarChar(30)
+  vigilante_id   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome           String        @db.VarChar(100)
+  numero_bi      String?       @db.VarChar(30)
   idade          Int?
   foto_url       String?
   foto_public_id String?
-  viatura_id     String?  @db.Uuid
-  ativo          Boolean  @default(true)
-  criado_em      DateTime @default(now()) @db.Timestamp(6)
-  atualizado_em  DateTime @default(now()) @db.Timestamp(6)
-
-  viaturas    viaturas?     @relation(fields: [viatura_id], references: [viatura_id], onDelete: SetNull)
-  ocorrencias ocorrencias[]
+  viatura_id     String?       @db.Uuid
+  ativo          Boolean       @default(true)
+  criado_em      DateTime      @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime      @default(now()) @db.Timestamp(6)
+  ocorrencias    ocorrencias[]
+  viaturas       viaturas?     @relation(fields: [viatura_id], references: [viatura_id])
 }
 
 model encarregados_token {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  encarregado_id String   @db.Uuid
-  token          String   @db.VarChar(300)
-  plataforma     String?  @db.VarChar(20)
-  updated_at     DateTime @default(now()) @db.Timestamp(6)
-
-  encarregados encarregados @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: Cascade)
+  id             String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  encarregado_id String       @db.Uuid
+  token          String       @db.VarChar(300)
+  plataforma     String?      @db.VarChar(20)
+  updated_at     DateTime     @default(now()) @db.Timestamp(6)
+  encarregados   encarregados @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: Cascade)
 
   @@unique([encarregado_id, token], map: "ux_encarregado_token")
 }
@@ -762,7 +772,7 @@ model comunicados {
   comunicado_id   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   titulo          String   @db.VarChar(140)
   mensagem        String
-  publico_alvo    String?  @default("pais") @db.VarChar(20) // pais | motoristas | todos
+  publico_alvo    String?  @default("pais") @db.VarChar(20)
   ativo           Boolean  @default(true)
   data_publicacao DateTime @default(now()) @db.Timestamp(6)
 }
@@ -777,18 +787,18 @@ model comunicados_leitura {
 }
 
 model alertas_motorista {
-  alerta_id     String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  motorista_id  String     @db.Uuid
-  viagem_id     String     @db.Uuid
-  mensagem      String
-  tipo_alerta   String?   @db.VarChar(50)    // 👈 adiciona esta linha
-  enviado       Boolean   @default(false)        // 👈 ADICIONA ESTA LINHA
-  lido          Boolean    @default(false)
-  criado_em     DateTime   @default(now()) @db.Timestamp(6)
-
-  motoristas    motoristas @relation(fields: [motorista_id], references: [motorista_id], onDelete: Cascade)
-  viagens       viagens    @relation(fields: [viagem_id], references: [viagem_id], onDelete: Cascade)
+  alerta_id    String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  motorista_id String     @db.Uuid
+  viagem_id    String     @db.Uuid
+  mensagem     String
+  lido         Boolean    @default(false)
+  criado_em    DateTime   @default(now()) @db.Timestamp(6)
+  tipo_alerta  String?    @db.VarChar(50)
+  enviado      Boolean    @default(false)
+  motoristas   motoristas @relation(fields: [motorista_id], references: [motorista_id], onDelete: Cascade)
+  viagens      viagens    @relation(fields: [viagem_id], references: [viagem_id], onDelete: Cascade)
 }
+
 model parametros_alertas {
   id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   nome          String   @unique @db.VarChar(100)
@@ -797,4 +807,152 @@ model parametros_alertas {
   atualizado_em DateTime @default(now()) @db.Timestamp(6)
 }
 
+model eta_calculos {
+  eta_id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  viagem_id      String?  @db.Uuid
+  aluno_id       String?  @db.Uuid
+  viatura_lat    Decimal? @db.Decimal(10, 8)
+  viatura_lng    Decimal? @db.Decimal(11, 8)
+  aluno_lat      Decimal? @db.Decimal(10, 8)
+  aluno_lng      Decimal? @db.Decimal(11, 8)
+  distancia_km   Decimal? @db.Decimal(10, 2)
+  tempo_minutos  Int?
+  alerta_enviado Boolean  @default(false)
+  criado_em      DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em  DateTime @default(now()) @db.Timestamp(6)
 
+  @@index([aluno_id], map: "ix_eta_calculos_aluno")
+  @@index([viagem_id], map: "ix_eta_calculos_viagem")
+}
+
+model rotas_otimizadas {
+  rota_otimizada_id  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  rota_id            String?  @db.Uuid
+  algoritmo          String?  @db.VarChar(50)
+  ordem_alunos       String?
+  distancia_total_km Decimal? @db.Decimal(10, 2)
+  ativa              Boolean  @default(false)
+  criado_em          DateTime @default(now()) @db.Timestamp(6)
+  atualizado_em      DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([rota_id], map: "ix_rotas_otimizadas_rota")
+}
+
+model integracoes {
+  integracao_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  canal         String    @unique @db.VarChar(40)
+  nome          String?   @db.VarChar(100)
+  url_base      String?   @db.VarChar(255)
+  modo_auth     String?   @default("api_key") @db.VarChar(20)
+  api_key       String?
+  auth_extra    String?
+  remetente     String?   @db.VarChar(60)
+  config_extra  Json?
+  ativo         Boolean?  @default(false)
+  criado_em     DateTime? @default(now()) @db.Timestamp(6)
+  atualizado_em DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model paineis {
+  painel_uuid String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  painel_id   String    @unique @db.VarChar(40)
+  tipo        String    @db.VarChar(20)
+  viatura_id  String?   @db.Uuid
+  escola_id   String?   @db.Uuid
+  nome        String?   @db.VarChar(100)
+  ativo       Boolean   @default(true)
+  ultimo_ping DateTime? @db.Timestamp(6)
+  criado_em   DateTime? @default(now()) @db.Timestamp(6)
+  escolas     escolas?  @relation(fields: [escola_id], references: [escola_id], onUpdate: NoAction)
+  viaturas    viaturas? @relation(fields: [viatura_id], references: [viatura_id], onUpdate: NoAction)
+}
+
+model anexos_aluno {
+  anexo_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aluno_id      String    @db.Uuid
+  tipo          String    @default("outro") @db.VarChar(30)
+  nome_ficheiro String?   @db.VarChar(150)
+  url           String?
+  public_id     String?
+  criado_em     DateTime? @default(now()) @db.Timestamp(6)
+  alunos        alunos    @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([aluno_id], map: "anexos_aluno_idx")
+}
+
+model autorizacoes_entrega {
+  autorizacao_id      String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  pessoa_id           String              @db.Uuid
+  aluno_id            String              @db.Uuid
+  parentesco          String?             @db.VarChar(40)
+  ativo               Boolean             @default(true)
+  criado_em           DateTime?           @default(now()) @db.Timestamp(6)
+  alunos              alunos              @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+  pessoas_autorizadas pessoas_autorizadas @relation(fields: [pessoa_id], references: [pessoa_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([pessoa_id, aluno_id], map: "autorizacoes_pessoa_aluno_key")
+  @@index([aluno_id], map: "autorizacoes_aluno_idx")
+  @@index([pessoa_id], map: "autorizacoes_pessoa_idx")
+}
+
+model pessoas_autorizadas {
+  pessoa_id            String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome                 String                 @db.VarChar(100)
+  bi                   String?                @db.VarChar(40)
+  telefone             String?                @db.VarChar(20)
+  codigo_qr            String?                @unique @db.VarChar(80)
+  ativo                Boolean                @default(true)
+  criado_em            DateTime?              @default(now()) @db.Timestamp(6)
+  autorizacoes_entrega autorizacoes_entrega[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model precos_mes {
+  preco_mes_id   String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  ano_lectivo_id String      @db.Uuid
+  mes            Int
+  fator          Decimal     @default(1.00) @db.Decimal(4, 2)
+  valor_fixo     Decimal?    @db.Decimal(12, 2)
+  nota           String?     @db.VarChar(80)
+  created_at     DateTime?   @default(now()) @db.Timestamp(6)
+  ativo          Boolean     @default(true)
+  ordem          Int?
+  ano_lectivo    ano_lectivo @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([ano_lectivo_id, mes], map: "precos_mes_ano_mes_key")
+}
+
+model hub_eventos {
+  evento_id     String    @id @db.VarChar(80)
+  event_type    String?   @db.VarChar(50)
+  reference     String?   @db.VarChar(20)
+  amount        Decimal?  @db.Decimal(12, 2)
+  payload       Json?
+  processado_em DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model email_config {
+  config_id       String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  smtp_host       String    @db.VarChar(120)
+  smtp_porta      Int       @default(587)
+  smtp_seguro     Boolean   @default(false)
+  smtp_user       String?   @db.VarChar(150)
+  smtp_senha      String?   @db.VarChar(200)
+  remetente_nome  String?   @default("Assistance24 Transporte Escolar") @db.VarChar(100)
+  remetente_email String?   @db.VarChar(150)
+  ativo           Boolean   @default(true)
+  atualizado_em   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model tokens_assinatura {
+  token_id  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  token     String    @unique @db.VarChar(64)
+  aluno_id  String    @db.Uuid
+  expira_em DateTime  @db.Timestamp(6)
+  usado_em  DateTime? @db.Timestamp(6)
+  criado_em DateTime? @default(now()) @db.Timestamp(6)
+  alunos    alunos    @relation(fields: [aluno_id], references: [aluno_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([aluno_id], map: "tokens_assinatura_aluno_idx")
+}

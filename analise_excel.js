@@ -1,0 +1,22 @@
+const XLSX = require('xlsx');
+const wb = XLSX.readFile('/root/excel/rotas_completas.xlsx');
+const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+console.log('TOTAL DE LINHAS:', rows.length);
+console.log('');
+console.log('=== AMOSTRA (linha 1) ===');
+console.log(JSON.stringify(rows[0], null, 2));
+console.log('');
+console.log('=== PADRAO rota_codigo (10 exemplos) ===');
+rows.slice(0, 10).forEach(function(r) {
+  console.log('  ' + r.rota_codigo + ' | abbr=' + r.rota_abbr + ' | horario=' + r.horario + ' | escola=' + r.escola + ' | artigo=' + r.codigo_artigo);
+});
+console.log('');
+var escolas = {};
+rows.forEach(function(r) { var e = String(r.escola); escolas[e] = (escolas[e]||0)+1; });
+console.log('Valores de "escola":', JSON.stringify(escolas));
+var horarios = {};
+rows.forEach(function(r) { var h = String(r.horario); horarios[h] = (horarios[h]||0)+1; });
+console.log('Valores de "horario":', JSON.stringify(horarios));
+console.log('');
+console.log('=== Colunas ===');
+console.log(Object.keys(rows[0]).join(', '));

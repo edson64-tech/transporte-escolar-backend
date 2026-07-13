@@ -1,27 +1,34 @@
-import { WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { WebSocketGateway, SubscribeMessage, MessageBody, ConnectedSocket, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import { Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
-    origin: (process.env.ALLOWED_ORIGINS || '*').split(','),
-    credentials: true,
+    origin: '*',
   },
 })
 export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer() io: Server;
+  private readonly logger = new Logger(RealtimeGateway.name);
 
-  handleConnection(client: any) {}
-  handleDisconnect(client: any) {}
+  handleConnection(client: Socket) {
+    this.logger.log(`Cliente conectado: ${client.id}`);
+  }
 
-  emitPainelUpdate(payload: {
-    rota: string;
-    viagem_codigo: string;
-    status: 'previsto' | 'partiu' | 'atrasado' | 'chegou';
-    horario_previsto?: string;
-    horario_real?: string;
-    mensagem?: string;
-  }) {
-    this.io.to('painel:partidas').emit('painel:update', payload);
-    this.io.to(`rota:${payload.rota}`).emit('painel:update', payload);
+  handleDisconnect(client: Socket) {
+    this.logger.log(`Cliente desconectado: ${client.id}`);
+  }
+
+  @SubscribeMessage('gps:position')
+  handleGpsPosition(
+    @MessageBody() data: { viagem_id: string; lat: number; lng: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const room = `viagem:${data.viagem_id}`;
+    client.broadcast.to(room).emit('gps:updated', {
+      viagem_id: data.viagem_id,
+      latitude: data.lat,
+      longitude: data.lng,
+      timestamp: new Date(),
+    });
   }
 }

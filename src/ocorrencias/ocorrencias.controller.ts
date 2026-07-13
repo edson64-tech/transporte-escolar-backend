@@ -1,6 +1,14 @@
 import { Body, Controller, Get, Param, Post, Put, Delete } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 import { OcorrenciasService } from './ocorrencias.service';
 
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 @Controller('ocorrencias')
 export class OcorrenciasController {
   constructor(private readonly svc: OcorrenciasService) {}

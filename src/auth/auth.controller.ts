@@ -1,9 +1,11 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginMotoristaDto, LoginEncarregadoDto, LoginAdminDto } from './dto/login.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Autenticação')
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,6 +24,12 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   async loginEncarregado(@Body() dto: LoginEncarregadoDto) {
     return this.authService.loginEncarregado(dto);
+  }
+
+  @Post('refresh')
+  @UseGuards(AuthGuard('jwt'))
+  async refresh(@Req() req: any) {
+    return this.authService.refreshToken(req.user);
   }
 
   @Post('login/admin')

@@ -38,7 +38,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         where: { encarregado_id: payload.sub },
         select: { encarregado_id: true, nome: true, telefone: true },
       });
-    } else if (payload.role === 'admin') {
+    } else if (payload.role === 'admin' || payload.role === 'operador') {
       user = await this.prisma.utilizadores.findUnique({
         where: { utilizador_id: payload.sub },
         select: { utilizador_id: true, nome: true, email: true, ativo: true },

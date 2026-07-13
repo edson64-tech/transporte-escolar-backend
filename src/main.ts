@@ -4,18 +4,37 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // ✅ 1️⃣ CORS completo (para os teus 4 frontends)
+  // Domínios fixos de produção autorizados
+  const origensFixas = [
+    'https://escolar.assistance24.ao',
+    'https://api.escolar.assistance24.ao',
+    'https://pais.escolar.assistance24.ao',
+    'https://admin.escolar.assistance24.ao',
+    'https://motorista.escolar.assistance24.ao',
+    'https://painel.assistance24.ao',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+
   app.enableCors({
-    origin: [
-      'https://escolar.assistance24.ao',
-      'https://painel.assistance24.ao',
-      'http://localhost:3000',
-      'http://localhost:5173', // caso uses Vite
-    ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    origin: (origin, callback) => {
+      // Pedidos sem origin (curl, apps móveis, server-to-server) são permitidos
+      if (!origin) return callback(null, true);
+      // Domínios fixos
+      if (origensFixas.includes(origin)) return callback(null, true);
+      // Qualquer subdomínio Lovable (preview e publicado)
+      if (/\.lovable\.app$/.test(origin)) return callback(null, true);
+      if (/\.lovableproject\.com$/.test(origin)) return callback(null, true);
+      // Caso contrário, recusar
+      return callback(new Error('Origem não autorizada pelo CORS'), false);
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   // ✅ 2️⃣ Validação global (segurança + limpeza dos dados recebidos)
@@ -38,12 +57,12 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   // ✅ 4️⃣ Subir aplicação
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`🚀 API on http://localhost:${port}`);
-  console.log(`📘 Swagger docs at http://localhost:${port}/api/docs`);
+  console.log(`📘 Swagger docs at http://localhost:${port}/docs`);
 }
 bootstrap();

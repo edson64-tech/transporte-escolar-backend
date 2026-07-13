@@ -14,7 +14,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'sua-chave-secreta-super-segura-mude-isso',
-      signOptions: { expiresIn: '7d' }, // Token válido por 7 dias
+      signOptions: { expiresIn: '1h' }, // 1h + refresh automático no frontend
     }),
   ],
   controllers: [AuthController],

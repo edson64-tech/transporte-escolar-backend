@@ -61,6 +61,61 @@ export class UploadService {
     throw new InternalServerErrorException(`Provider ${cfg.provider} ainda não implementado.`);
   }
 
+  // Upload de PDF (ex: ficha de adesão) para o Cloudinary + registo em anexos_aluno
+  async uploadPdfAluno(alunoId: string, buffer: Buffer, tipo: string, nomeFicheiro: string) {
+    const cfg = await this.storage.getActiveConfig();
+    cloudinary.config({
+      cloud_name: cfg.cloud_name!,
+      api_key: cfg.api_key!,
+      api_secret: cfg.api_secret!,
+      secure: true,
+    });
+    const res = await new Promise<UploadApiResponse>((resolve, reject) => {
+      const pass = new stream.PassThrough();
+      const up = cloudinary.uploader.upload_stream(
+        { folder: 'alunos/documentos', public_id: `${tipo}_${alunoId}`, overwrite: true, resource_type: 'raw', format: 'pdf' },
+        (err, r) => (err ? reject(err) : resolve(r as UploadApiResponse)),
+      );
+      pass.end(buffer);
+      pass.pipe(up);
+    });
+    // apaga registo anterior do mesmo tipo e regista o novo
+    await this.prisma.anexos_aluno.deleteMany({ where: { aluno_id: alunoId, tipo } });
+    await this.prisma.anexos_aluno.create({
+      data: {
+        aluno_id: alunoId,
+        tipo,
+        nome_ficheiro: nomeFicheiro,
+        url: res.secure_url,
+        public_id: res.public_id,
+      },
+    });
+    return { url: res.secure_url, public_id: res.public_id };
+  }
+
+  // Assinatura do encarregado (formulário ou app do tablet) → anexo 'assinatura_encarregado'
+  async uploadAssinaturaAluno(alunoId: string, file: Express.Multer.File) {
+    if (!file?.buffer) throw new BadRequestException('Ficheiro em falta');
+    const cfg = await this.storage.getActiveConfig();
+    cloudinary.config({
+      cloud_name: cfg.cloud_name!, api_key: cfg.api_key!, api_secret: cfg.api_secret!, secure: true,
+    });
+    const res = await new Promise<UploadApiResponse>((resolve, reject) => {
+      const pass = new stream.PassThrough();
+      const up = cloudinary.uploader.upload_stream(
+        { folder: 'alunos/assinaturas', public_id: `assinatura_${alunoId}`, overwrite: true, resource_type: 'image' },
+        (err, r) => (err ? reject(err) : resolve(r as UploadApiResponse)),
+      );
+      pass.end(file.buffer);
+      pass.pipe(up);
+    });
+    await this.prisma.anexos_aluno.deleteMany({ where: { aluno_id: alunoId, tipo: 'assinatura_encarregado' } });
+    await this.prisma.anexos_aluno.create({
+      data: { aluno_id: alunoId, tipo: 'assinatura_encarregado', nome_ficheiro: 'assinatura.png', url: res.secure_url, public_id: res.public_id },
+    });
+    return { ok: true, url: res.secure_url };
+  }
+
   async uploadFotoAluno(alunoId: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Ficheiro não enviado');
 

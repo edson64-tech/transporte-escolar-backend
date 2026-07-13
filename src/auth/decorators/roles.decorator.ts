@@ -4,6 +4,7 @@ export enum UserRole {
   ADMIN = 'admin',
   MOTORISTA = 'motorista',
   ENCARREGADO = 'encarregado',
+  OPERADOR = 'operador',
 }
 
 export const ROLES_KEY = 'roles';

@@ -1,6 +1,14 @@
-import { Body, Controller, Get, Param, Post, Put, Delete } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Delete, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UtilizadoresService } from './utilizadores.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 
+@ApiTags('Utilizadores')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 @Controller('utilizadores')
 export class UtilizadoresController {
   constructor(private readonly svc: UtilizadoresService) {}

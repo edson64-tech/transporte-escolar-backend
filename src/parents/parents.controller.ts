@@ -87,6 +87,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/alunos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar alunos (ADMIN)' })
   async adminListAlunos(@Query() query: any) {
     const { page = 1, limit = 50, search } = query;
@@ -107,6 +110,9 @@ export class ParentsController {
   }
 
   @Get('admin/alunos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes aluno (ADMIN)' })
   async adminGetAluno(@Param('id') id: string) {
     const aluno = await this.prisma.alunos.findUnique({
@@ -118,12 +124,18 @@ export class ParentsController {
   }
 
   @Post('admin/alunos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar aluno (ADMIN)' })
   async adminCreateAluno(@Body() data: any) {
     return await this.prisma.alunos.create({ data: { ...data, status: data.status || 'ativo', ativo: true }, include: { encarregados: { select: { nome: true } } } });
   }
 
   @Put('admin/alunos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar aluno (ADMIN)' })
   async adminUpdateAluno(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.alunos.findUnique({ where: { aluno_id: id } });
@@ -132,6 +144,9 @@ export class ParentsController {
   }
 
   @Delete('admin/alunos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Desativar aluno (ADMIN)' })
   async adminDeleteAluno(@Param('id') id: string) {
     const existe = await this.prisma.alunos.findUnique({ where: { aluno_id: id } });
@@ -144,6 +159,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/encarregados')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar encarregados (ADMIN)' })
   async adminListEncarregados(@Query() query: any) {
     const { page = 1, limit = 50, search } = query;
@@ -165,6 +183,9 @@ export class ParentsController {
   }
 
   @Get('admin/encarregados/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes encarregado (ADMIN)' })
   async adminGetEncarregado(@Param('id') id: string) {
     const enc = await this.prisma.encarregados.findUnique({
@@ -176,6 +197,9 @@ export class ParentsController {
   }
 
   @Post('admin/encarregados')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar encarregado (ADMIN)' })
   async adminCreateEncarregado(@Body() data: any) {
     if (data.senha) {
@@ -187,6 +211,9 @@ export class ParentsController {
   }
 
   @Put('admin/encarregados/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar encarregado (ADMIN)' })
   async adminUpdateEncarregado(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.encarregados.findUnique({ where: { encarregado_id: id } });
@@ -200,6 +227,9 @@ export class ParentsController {
   }
 
   @Delete('admin/encarregados/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar encarregado (ADMIN)' })
   async adminDeleteEncarregado(@Param('id') id: string) {
     const existe = await this.prisma.encarregados.findUnique({ where: { encarregado_id: id } });
@@ -212,6 +242,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/rotas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar rotas (ADMIN)' })
   async adminListRotas(@Query() query: any) {
     const { page = 1, limit = 50, search } = query;
@@ -232,6 +265,9 @@ export class ParentsController {
   }
 
   @Get('admin/rotas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes rota (ADMIN)' })
   async adminGetRota(@Param('id') id: string) {
     const rota = await this.prisma.rotas.findUnique({
@@ -243,12 +279,18 @@ export class ParentsController {
   }
 
   @Post('admin/rotas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar rota (ADMIN)' })
   async adminCreateRota(@Body() data: any) {
     return await this.prisma.rotas.create({ data, include: { escolas: true, campi: true } });
   }
 
   @Put('admin/rotas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar rota (ADMIN)' })
   async adminUpdateRota(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.rotas.findUnique({ where: { rota_id: id } });
@@ -257,6 +299,9 @@ export class ParentsController {
   }
 
   @Delete('admin/rotas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar rota (ADMIN)' })
   async adminDeleteRota(@Param('id') id: string) {
     const existe = await this.prisma.rotas.findUnique({ where: { rota_id: id } });
@@ -269,6 +314,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/viagens')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar viagens (ADMIN)' })
   async adminListViagens(@Query() query: any) {
     const { page = 1, limit = 50, data: dataFiltro } = query;
@@ -284,6 +332,9 @@ export class ParentsController {
   }
 
   @Get('admin/viagens/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes viagem (ADMIN)' })
   async adminGetViagem(@Param('id') id: string) {
     const viagem = await this.prisma.viagens.findUnique({
@@ -295,12 +346,18 @@ export class ParentsController {
   }
 
   @Post('admin/viagens')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar viagem (ADMIN)' })
   async adminCreateViagem(@Body() data: any) {
     return await this.prisma.viagens.create({ data, include: { rotas: true, viaturas: true } });
   }
 
   @Put('admin/viagens/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar viagem (ADMIN)' })
   async adminUpdateViagem(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.viagens.findUnique({ where: { viagem_id: id } });
@@ -309,6 +366,9 @@ export class ParentsController {
   }
 
   @Delete('admin/viagens/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar viagem (ADMIN)' })
   async adminDeleteViagem(@Param('id') id: string) {
     const existe = await this.prisma.viagens.findUnique({ where: { viagem_id: id } });
@@ -321,6 +381,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/escolas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar escolas (ADMIN)' })
   async adminListEscolas(@Query() query: any) {
     const { page = 1, limit = 50, search } = query;
@@ -336,6 +399,9 @@ export class ParentsController {
   }
 
   @Get('admin/escolas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes escola (ADMIN)' })
   async adminGetEscola(@Param('id') id: string) {
     const escola = await this.prisma.escolas.findUnique({
@@ -347,12 +413,18 @@ export class ParentsController {
   }
 
   @Post('admin/escolas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar escola (ADMIN)' })
   async adminCreateEscola(@Body() data: any) {
     return await this.prisma.escolas.create({ data, include: { campi: true } });
   }
 
   @Put('admin/escolas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar escola (ADMIN)' })
   async adminUpdateEscola(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.escolas.findUnique({ where: { escola_id: id } });
@@ -361,6 +433,9 @@ export class ParentsController {
   }
 
   @Delete('admin/escolas/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar escola (ADMIN)' })
   async adminDeleteEscola(@Param('id') id: string) {
     const existe = await this.prisma.escolas.findUnique({ where: { escola_id: id } });
@@ -373,6 +448,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/mensalidades')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar mensalidades (ADMIN)' })
   async adminListMensalidades(@Query() query: any) {
     const { page = 1, limit = 50, aluno_id, status } = query;
@@ -389,6 +467,9 @@ export class ParentsController {
   }
 
   @Get('admin/mensalidades/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes mensalidade (ADMIN)' })
   async adminGetMensalidade(@Param('id') id: string) {
     const mens = await this.prisma.mensalidades.findUnique({
@@ -400,12 +481,18 @@ export class ParentsController {
   }
 
   @Post('admin/mensalidades')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar mensalidade (ADMIN)' })
   async adminCreateMensalidade(@Body() data: any) {
     return await this.prisma.mensalidades.create({ data: { ...data, status: data.status || 'pendente' }, include: { alunos: true, ano_lectivo: true } });
   }
 
   @Put('admin/mensalidades/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar mensalidade (ADMIN)' })
   async adminUpdateMensalidade(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.mensalidades.findUnique({ where: { mensalidade_id: id } });
@@ -414,6 +501,9 @@ export class ParentsController {
   }
 
   @Delete('admin/mensalidades/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar mensalidade (ADMIN)' })
   async adminDeleteMensalidade(@Param('id') id: string) {
     const existe = await this.prisma.mensalidades.findUnique({ where: { mensalidade_id: id } });
@@ -426,6 +516,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/pagamentos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar pagamentos (ADMIN)' })
   async adminListPagamentos(@Query() query: any) {
     const { page = 1, limit = 50, aluno_id, status } = query;
@@ -442,6 +535,9 @@ export class ParentsController {
   }
 
   @Get('admin/pagamentos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes pagamento (ADMIN)' })
   async adminGetPagamento(@Param('id') id: string) {
     const pag = await this.prisma.pagamentos.findUnique({ where: { pagamento_id: id }, include: { alunos: true } });
@@ -450,12 +546,18 @@ export class ParentsController {
   }
 
   @Post('admin/pagamentos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar pagamento (ADMIN)' })
   async adminCreatePagamento(@Body() data: any) {
     return await this.prisma.pagamentos.create({ data: { ...data, status: data.status || 'pendente' }, include: { alunos: true } });
   }
 
   @Put('admin/pagamentos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar pagamento (ADMIN)' })
   async adminUpdatePagamento(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.pagamentos.findUnique({ where: { pagamento_id: id } });
@@ -464,6 +566,9 @@ export class ParentsController {
   }
 
   @Delete('admin/pagamentos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar pagamento (ADMIN)' })
   async adminDeletePagamento(@Param('id') id: string) {
     const existe = await this.prisma.pagamentos.findUnique({ where: { pagamento_id: id } });
@@ -476,6 +581,9 @@ export class ParentsController {
   // ============================================================
 
   @Get('admin/ano-letivo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar anos letivos (ADMIN)' })
   async adminListAnoLetivo(@Query() query: any) {
     const { page = 1, limit = 50 } = query;
@@ -489,6 +597,9 @@ export class ParentsController {
   }
 
   @Get('admin/ano-letivo/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Detalhes ano letivo (ADMIN)' })
   async adminGetAnoLetivo(@Param('id') id: string) {
     const ano = await this.prisma.ano_lectivo.findUnique({
@@ -500,6 +611,9 @@ export class ParentsController {
   }
 
   @Post('admin/ano-letivo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar ano letivo (ADMIN)' })
   async adminCreateAnoLetivo(@Body() body: any) {
     const data: any = { ...body };
@@ -510,6 +624,9 @@ export class ParentsController {
   }
 
   @Put('admin/ano-letivo/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar ano letivo (ADMIN)' })
   async adminUpdateAnoLetivo(@Param('id') id: string, @Body() data: any) {
     const existe = await this.prisma.ano_lectivo.findUnique({ where: { ano_lectivo_id: id } });
@@ -520,10 +637,287 @@ export class ParentsController {
   }
 
   @Delete('admin/ano-letivo/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Deletar ano letivo (ADMIN)' })
   async adminDeleteAnoLetivo(@Param('id') id: string) {
     const existe = await this.prisma.ano_lectivo.findUnique({ where: { ano_lectivo_id: id } });
     if (!existe) throw new NotFoundException('Ano letivo não encontrado');
     return await this.prisma.ano_lectivo.delete({ where: { ano_lectivo_id: id } });
+  }
+
+  // ============================================================
+  // 🔐 MÓDULO 9: CRUD DE CONTRATOS DE SERVIÇO
+  // ============================================================
+
+  @Get('admin/contratos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar contratos (ADMIN)' })
+  async adminListContratos(@Query() query: any) {
+    const { page = 1, limit = 50, aluno_id, ativo } = query;
+    const where: any = {};
+    if (aluno_id) where.aluno_id = aluno_id;
+    if (ativo !== undefined) where.ativo = ativo === 'true';
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const [data, total] = await Promise.all([
+      this.prisma.contratos_servico.findMany({ where, skip, take, include: { alunos: { select: { nome: true, codigo_aluno: true } }, rotas: { select: { nome: true, codigo: true } }, ano_lectivo: { select: { nome: true } } }, orderBy: { created_at: 'desc' } }),
+      this.prisma.contratos_servico.count({ where }),
+    ]);
+    return { data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } };
+  }
+
+  @Get('admin/contratos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Detalhes contrato (ADMIN)' })
+  async adminGetContrato(@Param('id') id: string) {
+    const contrato = await this.prisma.contratos_servico.findUnique({
+      where: { contrato_id: id },
+      include: { alunos: true, rotas: true, ano_lectivo: true },
+    });
+    if (!contrato) throw new NotFoundException('Contrato não encontrado');
+    return contrato;
+  }
+
+  @Post('admin/contratos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar contrato (ADMIN)' })
+  async adminCreateContrato(@Body() data: any) {
+    return await this.prisma.contratos_servico.create({ data, include: { alunos: true, rotas: true, ano_lectivo: true } });
+  }
+
+  @Put('admin/contratos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualizar contrato (ADMIN)' })
+  async adminUpdateContrato(@Param('id') id: string, @Body() data: any) {
+    const existe = await this.prisma.contratos_servico.findUnique({ where: { contrato_id: id } });
+    if (!existe) throw new NotFoundException('Contrato não encontrado');
+    return await this.prisma.contratos_servico.update({ where: { contrato_id: id }, data });
+  }
+
+  @Delete('admin/contratos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar contrato (ADMIN)' })
+  async adminDeleteContrato(@Param('id') id: string) {
+    const existe = await this.prisma.contratos_servico.findUnique({ where: { contrato_id: id } });
+    if (!existe) throw new NotFoundException('Contrato não encontrado');
+    return await this.prisma.contratos_servico.delete({ where: { contrato_id: id } });
+  }
+
+  // ============================================================
+  // 🔐 MÓDULO 10: CRUD DE ADESÕES DE SERVIÇO
+  // ============================================================
+
+  @Get('admin/adesoes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar adesões (ADMIN)' })
+  async adminListAdesoes(@Query() query: any) {
+    const { page = 1, limit = 50, aluno_id, status } = query;
+    const where: any = {};
+    if (aluno_id) where.aluno_id = aluno_id;
+    if (status) where.status = status;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const [data, total] = await Promise.all([
+      this.prisma.adesoes_servico.findMany({ where, skip, take, include: { alunos: { select: { nome: true, codigo_aluno: true } }, rotas: { select: { nome: true, codigo: true } }, ano_lectivo: { select: { nome: true } } }, orderBy: { created_at: 'desc' } }),
+      this.prisma.adesoes_servico.count({ where }),
+    ]);
+    return { data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } };
+  }
+
+  @Get('admin/adesoes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Detalhes adesão (ADMIN)' })
+  async adminGetAdesao(@Param('id') id: string) {
+    const adesao = await this.prisma.adesoes_servico.findUnique({
+      where: { adesao_id: id },
+      include: { alunos: true, rotas: true, ano_lectivo: true },
+    });
+    if (!adesao) throw new NotFoundException('Adesão não encontrada');
+    return adesao;
+  }
+
+  @Post('admin/adesoes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar adesão (ADMIN)' })
+  async adminCreateAdesao(@Body() data: any) {
+    return await this.prisma.adesoes_servico.create({ data, include: { alunos: true, rotas: true, ano_lectivo: true } });
+  }
+
+  @Put('admin/adesoes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualizar adesão (ADMIN)' })
+  async adminUpdateAdesao(@Param('id') id: string, @Body() data: any) {
+    const existe = await this.prisma.adesoes_servico.findUnique({ where: { adesao_id: id } });
+    if (!existe) throw new NotFoundException('Adesão não encontrada');
+    return await this.prisma.adesoes_servico.update({ where: { adesao_id: id }, data });
+  }
+
+  @Delete('admin/adesoes/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar adesão (ADMIN)' })
+  async adminDeleteAdesao(@Param('id') id: string) {
+    const existe = await this.prisma.adesoes_servico.findUnique({ where: { adesao_id: id } });
+    if (!existe) throw new NotFoundException('Adesão não encontrada');
+    return await this.prisma.adesoes_servico.delete({ where: { adesao_id: id } });
+  }
+
+  // ============================================================
+  // 🔐 MÓDULO 11: CRUD DE ARTIGOS DE SERVIÇO
+  // ============================================================
+
+  @Get('admin/artigos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar artigos (ADMIN)' })
+  async adminListArtigos(@Query() query: any) {
+    const { page = 1, limit = 50, search, ativo } = query;
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { codigo: { contains: search, mode: 'insensitive' } },
+        { descricao: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (ativo !== undefined) where.ativo = ativo === 'true';
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const [data, total] = await Promise.all([
+      this.prisma.artigos_servico.findMany({ where, skip, take, orderBy: { codigo: 'asc' } }),
+      this.prisma.artigos_servico.count({ where }),
+    ]);
+    return { data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } };
+  }
+
+  @Get('admin/artigos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Detalhes artigo (ADMIN)' })
+  async adminGetArtigo(@Param('id') id: string) {
+    const artigo = await this.prisma.artigos_servico.findUnique({ where: { artigo_id: id } });
+    if (!artigo) throw new NotFoundException('Artigo não encontrado');
+    return artigo;
+  }
+
+  @Post('admin/artigos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar artigo (ADMIN)' })
+  async adminCreateArtigo(@Body() data: any) {
+    return await this.prisma.artigos_servico.create({ data });
+  }
+
+  @Put('admin/artigos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualizar artigo (ADMIN)' })
+  async adminUpdateArtigo(@Param('id') id: string, @Body() data: any) {
+    const existe = await this.prisma.artigos_servico.findUnique({ where: { artigo_id: id } });
+    if (!existe) throw new NotFoundException('Artigo não encontrado');
+    return await this.prisma.artigos_servico.update({ where: { artigo_id: id }, data });
+  }
+
+  @Delete('admin/artigos/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar artigo (ADMIN)' })
+  async adminDeleteArtigo(@Param('id') id: string) {
+    const existe = await this.prisma.artigos_servico.findUnique({ where: { artigo_id: id } });
+    if (!existe) throw new NotFoundException('Artigo não encontrado');
+    return await this.prisma.artigos_servico.delete({ where: { artigo_id: id } });
+  }
+
+  // ============================================================
+  // 🔐 MÓDULO 12: CRUD DE PREÇOS DE ROTA
+  // ============================================================
+
+  @Get('admin/precos-rota')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar preços de rota (ADMIN)' })
+  async adminListPrecosRota(@Query() query: any) {
+    const { page = 1, limit = 50, rota_id, ano_lectivo_id } = query;
+    const where: any = {};
+    if (rota_id) where.rota_id = rota_id;
+    if (ano_lectivo_id) where.ano_lectivo_id = ano_lectivo_id;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const [data, total] = await Promise.all([
+      this.prisma.precos_rota.findMany({ where, skip, take, include: { rotas: { select: { nome: true, codigo: true } }, ano_lectivo: { select: { nome: true } } }, orderBy: { created_at: 'desc' } }),
+      this.prisma.precos_rota.count({ where }),
+    ]);
+    return { data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } };
+  }
+
+  @Get('admin/precos-rota/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Detalhes preço rota (ADMIN)' })
+  async adminGetPrecoRota(@Param('id') id: string) {
+    const preco = await this.prisma.precos_rota.findUnique({
+      where: { preco_rota_id: id },
+      include: { rotas: true, ano_lectivo: true },
+    });
+    if (!preco) throw new NotFoundException('Preço de rota não encontrado');
+    return preco;
+  }
+
+  @Post('admin/precos-rota')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar preço rota (ADMIN)' })
+  async adminCreatePrecoRota(@Body() data: any) {
+    return await this.prisma.precos_rota.create({ data, include: { rotas: true, ano_lectivo: true } });
+  }
+
+  @Put('admin/precos-rota/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualizar preço rota (ADMIN)' })
+  async adminUpdatePrecoRota(@Param('id') id: string, @Body() data: any) {
+    const existe = await this.prisma.precos_rota.findUnique({ where: { preco_rota_id: id } });
+    if (!existe) throw new NotFoundException('Preço de rota não encontrado');
+    return await this.prisma.precos_rota.update({ where: { preco_rota_id: id }, data });
+  }
+
+  @Delete('admin/precos-rota/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar preço rota (ADMIN)' })
+  async adminDeletePrecoRota(@Param('id') id: string) {
+    const existe = await this.prisma.precos_rota.findUnique({ where: { preco_rota_id: id } });
+    if (!existe) throw new NotFoundException('Preço de rota não encontrado');
+    return await this.prisma.precos_rota.delete({ where: { preco_rota_id: id } });
   }
 }

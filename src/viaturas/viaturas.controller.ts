@@ -1,8 +1,16 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 import { ApiTags } from '@nestjs/swagger';
 import { ViaturasService } from './viaturas.service';
 
 @ApiTags('Viaturas')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 @Controller('viaturas')
 export class ViaturasController {
   constructor(private readonly svc: ViaturasService) {}

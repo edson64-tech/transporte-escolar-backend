@@ -121,10 +121,11 @@ export class AuthService {
       throw new UnauthorizedException('Email ou senha incorretos');
     }
 
+    const roleDoPerfil = admin.perfis?.nome === 'Operador' ? 'operador' : 'admin';
     const payload = {
       sub: admin.utilizador_id,
       email: admin.email,
-      role: 'admin',
+      role: roleDoPerfil,
     };
 
     return {
@@ -174,4 +175,11 @@ export class AuthService {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
   }
+
+  // Emite um token novo a partir de um token ainda válido (refresh silencioso)
+  async refreshToken(user: any) {
+    const payload = { sub: user.userId || user.sub, email: user.email, perfil: user.perfil };
+    return { access_token: this.jwtService.sign(payload) };
+  }
+
 }
