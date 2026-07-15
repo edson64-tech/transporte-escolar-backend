@@ -963,13 +963,14 @@ model tokens_assinatura {
 }
 
 model erp_agentes {
-  agente_id        String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome             String     @db.VarChar(120)
-  chave_hash       String     @unique @db.VarChar(64)
-  versao           String?    @db.VarChar(20)
-  ultimo_heartbeat DateTime?  @db.Timestamptz(6)
-  ativo            Boolean    @default(true)
-  criado_em        DateTime   @default(now()) @db.Timestamptz(6)
+  agente_id        String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome             String         @db.VarChar(120)
+  chave_hash       String         @unique @db.VarChar(64)
+  versao           String?        @db.VarChar(20)
+  ultimo_heartbeat DateTime?      @db.Timestamptz(6)
+  ativo            Boolean        @default(true)
+  criado_em        DateTime       @default(now()) @db.Timestamptz(6)
+  erp_empresas     erp_empresas[]
   erp_jobs         erp_jobs[]
 }
 
@@ -1010,7 +1011,9 @@ model erp_empresas {
   atualizado_em       DateTime         @default(now()) @db.Timestamptz(6)
   cod_cliente_default String?          @db.VarChar(30)
   cod_artigo_default  String?          @db.VarChar(30)
+  agente_id           String?          @db.Uuid
   erp_documentos      erp_documentos[]
+  erp_agentes         erp_agentes?     @relation(fields: [agente_id], references: [agente_id], onDelete: NoAction, onUpdate: NoAction)
   erp_jobs            erp_jobs[]
 
   @@unique([codigo_empresa, instancia])

@@ -105,8 +105,14 @@ export class ErpService {
   }
 
   async buscarJobs(agenteId: string) {
+    const minhas = await this.prisma.erp_empresas.findMany({
+      where: { agente_id: agenteId, ativa: true } as any,
+      select: { empresa_id: true },
+    });
+    const ids = minhas.map((e) => e.empresa_id);
+    if (!ids.length) return [];
     const jobs = await this.prisma.erp_jobs.findMany({
-      where: { estado: 'pendente' },
+      where: { estado: 'pendente', empresa_id: { in: ids } },
       orderBy: { criado_em: 'asc' },
       take: 10,
     });
