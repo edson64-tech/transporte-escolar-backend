@@ -1,6 +1,5 @@
 import { 
-  Controller, Get, Param, Query, Post, Body, UseGuards, Put, Delete, NotFoundException 
-} from '@nestjs/common';
+  Controller, Get, Param, Query, Post, Body, UseGuards, Put, Delete, NotFoundException, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ParentsService } from './parents.service';
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,13 +7,18 @@ import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { UploadService } from '../upload/upload.service';
+import { normalizarTelefone } from '../common/telefone.util';
 
 @ApiTags('Pais/Encarregados (App Pais)')
 @Controller('parents')
 export class ParentsController {
   constructor(
     private readonly svc: ParentsService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly uploadSvc: UploadService,
   ) {}
 
   // ============================================================
@@ -36,8 +40,8 @@ export class ParentsController {
   @Roles(UserRole.ENCARREGADO)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Tracking em tempo real do aluno (PROTEGIDO)' })
-  async live(@Param('aluno_id') id: string) {
-    return this.svc.live(id);
+  async live(@Param('aluno_id') id: string, @Req() req: any) {
+    return this.svc.live(id, req.user.userId);
   }
 
   @Get('billing/:aluno_id')
@@ -45,14 +49,98 @@ export class ParentsController {
   @Roles(UserRole.ENCARREGADO)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Histórico financeiro (PROTEGIDO)' })
-  async billing(@Param('aluno_id') id: string) {
-    return this.svc.billing(id);
+  async billing(@Param('aluno_id') id: string, @Req() req: any) {
+    return this.svc.billing(id, req.user.userId);
   }
 
   @Post('inscricao')
-  @ApiOperation({ summary: 'Criar nova inscrição (PÚBLICO)' })
-  async criarInscricao(@Body() body: any) {
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar nova inscrição (PROTEGIDO - encarregado)' })
+  async criarInscricao(@Body() body: any, @Req() req: any) {
+    // Seguranca: o pedido e sempre do encarregado autenticado
+    body.encarregado_id = req.user.userId;
     return this.svc.criarInscricao(body);
+  }
+
+  @Post('registo')
+  @ApiOperation({ summary: 'Registo de encarregado (PUBLICO - app dos pais)' })
+  async registo(@Body() body: any) {
+    return this.svc.registarEncarregado(body);
+  }
+
+  @Post('inscricao/foto')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 3 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Foto do aluno para o pedido de inscricao (PROTEGIDO)' })
+  async fotoPedido(@UploadedFile() file: Express.Multer.File) {
+    return this.uploadSvc.uploadFotoPedido(file);
+  }
+
+  @Post('assinatura/:aluno_id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Token de assinatura para um filho do encarregado (PROTEGIDO)' })
+  async linkAssinatura(@Param('aluno_id') alunoId: string, @Req() req: any) {
+    return this.svc.linkAssinaturaEncarregado(alunoId, req.user.userId);
+  }
+
+  @Get('catalogo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Catálogo de rotas e preços do ano ativo (PROTEGIDO)' })
+  async catalogo() {
+    return this.svc.catalogo();
+  }
+
+  @Get('anexos/:aluno_id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Anexos do aluno: ficha e processo (PROTEGIDO - so os proprios filhos)' })
+  async meusAnexos(@Param('aluno_id') alunoId: string, @Req() req: any) {
+    return this.svc.meusAnexos(alunoId, req.user.userId);
+  }
+
+  @Get('pedidos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ENCARREGADO)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Meus pedidos de inscrição (PROTEGIDO)' })
+  async meusPedidos(@Req() req: any) {
+    return this.svc.meusPedidos(req.user.userId);
+  }
+
+  @Get('admin/pedidos-inscricao')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar alunos (ADMIN)' })
+  async adminListarPedidos(@Query('estado') estado?: string) {
+    return this.svc.adminListarPedidos(estado);
+  }
+
+  @Put('admin/pedidos-inscricao/:id/aprovar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar alunos (ADMIN)' })
+  async aprovarPedido(@Param('id') id: string, @Body() body: any) {
+    return this.svc.aprovarPedido(id, body?.aluno_id);
+  }
+
+  @Put('admin/pedidos-inscricao/:id/rejeitar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OPERADOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar alunos (ADMIN)' })
+  async rejeitarPedido(@Param('id') id: string, @Body() body: any) {
+    return this.svc.rejeitarPedido(id, body?.motivo);
   }
 
   @Get('inscricoes')
@@ -207,6 +295,9 @@ export class ParentsController {
       delete data.senha;
       data.senha = await bcrypt.hash(senha, 10);
     }
+    if (data.telefone) {
+      data.telefone = normalizarTelefone(data.telefone);
+    }
     return await this.prisma.encarregados.create({ data, include: { alunos: { select: { nome: true } } } });
   }
 
@@ -222,6 +313,9 @@ export class ParentsController {
       const senha = data.senha;
       delete data.senha;
       data.senha = await bcrypt.hash(senha, 10);
+    }
+    if (data.telefone) {
+      data.telefone = normalizarTelefone(data.telefone);
     }
     return await this.prisma.encarregados.update({ where: { encarregado_id: id }, data });
   }

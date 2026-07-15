@@ -44,12 +44,12 @@ export class FichaPdfService {
     // 1º: pelo código da rota (determinístico)
     const porCodigo: Record<string, string> = {
       PT: 'PATRIOTA', CM: 'CAMAMA', TL: 'TALATONA', ZG: 'ZANGO', BF: 'BENFICA',
-      ZV: 'ZONA VERDE', KL1: 'KILAMBA 1', KL2: 'KILAMBA 2', KK: 'KILAMBA KK', BV: 'BOA VIDA',
+      ZV: 'ZONA VERDE', KL11: 'KILAMBA 1', KL12: 'KILAMBA 2', KK: 'KILAMBA KK', VD: 'BOA VIDA', BV: 'BOA VIDA',
     };
     if (codigoRota) {
       const cod = String(codigoRota).toUpperCase();
       // tenta o código completo (KL1, KL2) e depois o prefixo de 2 letras
-      for (const chave of ['KL1', 'KL2', 'KK']) {
+      for (const chave of ['KL11', 'KL12', 'KK']) {
         if (cod.startsWith(chave) && porCodigo[chave]) return LINHA[porCodigo[chave]];
       }
       const pref = cod.slice(0, 2);

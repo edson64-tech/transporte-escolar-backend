@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginMotoristaDto, LoginEncarregadoDto, LoginAdminDto } from './dto/login.dto';
+import { normalizarTelefone } from '../common/telefone.util';
 
 @Injectable()
 export class AuthService {
@@ -56,8 +57,9 @@ export class AuthService {
   // 👨‍👩‍👧 LOGIN ENCARREGADO
   // ============================================================
   async loginEncarregado(dto: LoginEncarregadoDto) {
+    const telefone = normalizarTelefone(dto.telefone);
     const encarregado = await this.prisma.encarregados.findUnique({
-      where: { telefone: dto.telefone },
+      where: { telefone },
     });
 
     if (!encarregado) {
@@ -178,7 +180,12 @@ export class AuthService {
 
   // Emite um token novo a partir de um token ainda válido (refresh silencioso)
   async refreshToken(user: any) {
-    const payload = { sub: user.userId || user.sub, email: user.email, perfil: user.perfil };
+    const payload = {
+      sub: user.userId || user.sub,
+      email: user.email,
+      telefone: user.telefone,
+      role: user.role,
+    };
     return { access_token: this.jwtService.sign(payload) };
   }
 

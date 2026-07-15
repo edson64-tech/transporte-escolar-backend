@@ -10,6 +10,7 @@ async function bootstrap() {
   // Domínios fixos de produção autorizados
   const origensFixas = [
     'https://escolar.assistance24.ao',
+      'https://pais.assistance24.ao',
     'https://api.escolar.assistance24.ao',
     'https://pais.escolar.assistance24.ao',
     'https://admin.escolar.assistance24.ao',

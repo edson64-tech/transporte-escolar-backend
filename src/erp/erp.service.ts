@@ -66,21 +66,25 @@ export class ErpService {
     if (existente && existente.estado !== 'falhado')
       throw new BadRequestException(`Documento já ${existente.estado} para esta cobrança (${existente.numero_documento || 'sem número'})`);
 
+    const emp = await this.prisma.erp_empresas.findUnique({ where: { empresa_id: empresaId } });
+    if (!emp) throw new NotFoundException('Empresa ERP não encontrada');
+
     const payload = {
       mensalidade_id: mensalidadeId,
       cliente: {
-        cod_cliente: aluno.cod_cliente || null,
+        cod_cliente: aluno.cod_cliente || (emp as any).cod_cliente_default || null,
         codigo_aluno: aluno.codigo_aluno,
         nome: aluno.faturacao_nome || aluno.nome,
         nif: aluno.faturacao_nif || aluno.num_documento || 'Consumidor Final',
       },
       linha: {
-        artigo: aluno.cod_artigo,
+        artigo: aluno.cod_artigo || (emp as any).cod_artigo_default,
         descricao: `Transporte escolar — ${m.tipo === 'taxa_inscricao' ? 'Taxa de inscrição' : 'Mensalidade ' + m.mes}`,
         valor: Number(m.valor_previsto ?? m.valor ?? 0),
       },
     };
-    if (!payload.linha.artigo) throw new BadRequestException('Aluno sem cod_artigo definido — configure o artigo na ficha do aluno');
+    if (!payload.cliente.cod_cliente) throw new BadRequestException('Sem cliente: defina o cod_cliente do aluno ou o Cliente por defeito da empresa');
+    if (!payload.linha.artigo) throw new BadRequestException('Sem artigo: defina o cod_artigo do aluno ou o Artigo por defeito da empresa');
 
     const job = await this.criarJob('emitir_documento', empresaId, payload);
     await this.prisma.erp_documentos.upsert({
@@ -126,6 +130,8 @@ export class ErpService {
           serie: e.serie,
           tipo_documento: e.tipo_documento,
           cod_iva_default: e.cod_iva_default,
+          cod_cliente_default: (e as any).cod_cliente_default ?? null,
+          cod_artigo_default: (e as any).cod_artigo_default ?? null,
           modo_teste: e.modo_teste,
         },
       });

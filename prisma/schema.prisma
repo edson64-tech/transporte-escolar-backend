@@ -74,6 +74,7 @@ model alunos {
   mensalidades         mensalidades[]
   ocorrencias          ocorrencias[]
   pagamentos           pagamentos[]
+  pedidos_inscricao    pedidos_inscricao[]
   tokens_assinatura    tokens_assinatura[]
 }
 
@@ -86,17 +87,19 @@ model encarregados {
   alunos              alunos[]
   encarregados_alunos encarregados_alunos[]
   tokens              encarregados_token[]
+  pedidos_inscricao   pedidos_inscricao[]
 }
 
 model escolas {
-  escola_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome      String    @db.VarChar(100)
-  endereco  String?
-  lat       Float?
-  lng       Float?
-  campi     campi[]
-  paineis   paineis[]
-  rotas     rotas[]
+  escola_id         String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome              String              @db.VarChar(100)
+  endereco          String?
+  lat               Float?
+  lng               Float?
+  campi             campi[]
+  paineis           paineis[]
+  pedidos_inscricao pedidos_inscricao[]
+  rotas             rotas[]
 }
 
 model gps_viagem {
@@ -167,6 +170,7 @@ model rotas {
   adesoes_servico      adesoes_servico[]
   contratos_servico    contratos_servico[]
   partidas_programadas partidas_programadas[]
+  pedidos_inscricao    pedidos_inscricao[]
   precos_rota          precos_rota[]
   campi                campi?                 @relation(fields: [campus_id], references: [campus_id], onDelete: NoAction, onUpdate: NoAction)
   escolas              escolas?               @relation(fields: [escola_id], references: [escola_id], onDelete: NoAction, onUpdate: NoAction)
@@ -262,6 +266,7 @@ model ano_lectivo {
   adesoes_servico   adesoes_servico[]
   contratos_servico contratos_servico[]
   mensalidades      mensalidades[]
+  pedidos_inscricao pedidos_inscricao[]
   precos_mes        precos_mes[]
   precos_rota       precos_rota[]
 }
@@ -989,22 +994,24 @@ model erp_documentos {
 }
 
 model erp_empresas {
-  empresa_id      String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nome            String           @db.VarChar(120)
-  codigo_empresa  String           @db.VarChar(30)
-  instancia       String           @default("DEFAULT") @db.VarChar(30)
-  linha           String           @default("Executivo") @db.VarChar(20)
-  api_username    String           @db.VarChar(60)
-  api_password    String
-  serie           String?          @db.VarChar(20)
-  tipo_documento  String           @default("FR") @db.VarChar(10)
-  cod_iva_default String?          @db.VarChar(10)
-  modo_teste      Boolean          @default(true)
-  ativa           Boolean          @default(true)
-  criado_em       DateTime         @default(now()) @db.Timestamptz(6)
-  atualizado_em   DateTime         @default(now()) @db.Timestamptz(6)
-  erp_documentos  erp_documentos[]
-  erp_jobs        erp_jobs[]
+  empresa_id          String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nome                String           @db.VarChar(120)
+  codigo_empresa      String           @db.VarChar(30)
+  instancia           String           @default("DEFAULT") @db.VarChar(30)
+  linha               String           @default("Executivo") @db.VarChar(20)
+  api_username        String           @db.VarChar(60)
+  api_password        String
+  serie               String?          @db.VarChar(20)
+  tipo_documento      String           @default("FR") @db.VarChar(10)
+  cod_iva_default     String?          @db.VarChar(10)
+  modo_teste          Boolean          @default(true)
+  ativa               Boolean          @default(true)
+  criado_em           DateTime         @default(now()) @db.Timestamptz(6)
+  atualizado_em       DateTime         @default(now()) @db.Timestamptz(6)
+  cod_cliente_default String?          @db.VarChar(30)
+  cod_artigo_default  String?          @db.VarChar(30)
+  erp_documentos      erp_documentos[]
+  erp_jobs            erp_jobs[]
 
   @@unique([codigo_empresa, instancia])
 }
@@ -1026,4 +1033,46 @@ model erp_jobs {
   erp_documentos erp_documentos[]
   erp_agentes    erp_agentes?     @relation(fields: [agente_id], references: [agente_id], onDelete: NoAction, onUpdate: NoAction)
   erp_empresas   erp_empresas     @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pedidos_inscricao {
+  pedido_id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  encarregado_id      String       @db.Uuid
+  nome_aluno          String
+  ano_lectivo_id      String       @db.Uuid
+  rota_id             String?      @db.Uuid
+  viagens_dia         Int          @default(1)
+  services_escolhidos String[]     @default([])
+  latitude            Float?
+  longitude           Float?
+  endereco            String?
+  foto_url            String?
+  observacoes         String?
+  estado              String       @default("pendente") @db.VarChar(20)
+  aluno_id            String?      @db.Uuid
+  motivo_rejeicao     String?
+  created_at          DateTime     @default(now()) @db.Timestamp(6)
+  updated_at          DateTime     @default(now()) @db.Timestamp(6)
+  autorizados         Json?
+  assinatura_url      String?
+  num_documento       String?      @db.VarChar(50)
+  data_nascimento     DateTime?    @db.Date
+  escola_id           String?      @db.Uuid
+  sala                String?      @db.VarChar(50)
+  turma               String?      @db.VarChar(50)
+  classe              String?      @db.VarChar(50)
+  sexo                String?      @db.VarChar(10)
+  naturalidade        String?      @db.VarChar(100)
+  nome_pai            String?      @db.VarChar(200)
+  contacto_pai        String?      @db.VarChar(50)
+  nome_mae            String?      @db.VarChar(200)
+  contacto_mae        String?      @db.VarChar(50)
+  alunos              alunos?      @relation(fields: [aluno_id], references: [aluno_id], onDelete: NoAction, onUpdate: NoAction)
+  ano_lectivo         ano_lectivo  @relation(fields: [ano_lectivo_id], references: [ano_lectivo_id], onDelete: NoAction, onUpdate: NoAction)
+  encarregados        encarregados @relation(fields: [encarregado_id], references: [encarregado_id], onDelete: NoAction, onUpdate: NoAction)
+  escolas             escolas?     @relation(fields: [escola_id], references: [escola_id], onDelete: NoAction, onUpdate: NoAction)
+  rotas               rotas?       @relation(fields: [rota_id], references: [rota_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([encarregado_id], map: "ix_pedidos_encarregado")
+  @@index([estado], map: "ix_pedidos_estado")
 }

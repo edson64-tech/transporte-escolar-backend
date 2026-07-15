@@ -116,6 +116,15 @@ export class UploadService {
     return { ok: true, url: res.secure_url };
   }
 
+  // Foto enviada pelo ENCARREGADO no pedido de inscricao (ainda sem aluno):
+  // sobe a imagem e devolve a URL — nenhuma tabela e alterada aqui.
+  async uploadFotoPedido(file: Express.Multer.File) {
+    if (!file?.buffer) throw new BadRequestException('Ficheiro não enviado');
+    const rand = require('crypto').randomBytes(6).toString('hex');
+    const res = await this.uploadImage(file.buffer, 'pedidos-inscricao', `pedido_${Date.now()}_${rand}`);
+    return { url: res.secure_url };
+  }
+
   async uploadFotoAluno(alunoId: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Ficheiro não enviado');
 
