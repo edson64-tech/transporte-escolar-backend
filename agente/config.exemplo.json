@@ -1,0 +1,6 @@
+{
+  "plataforma_url": "https://api.escolar.assistance24.ao",
+  "agente_chave": "COLOCAR-A-CHAVE-DO-AGENTE",
+  "primavera_url": "http://localhost:2018/WebApi",
+  "intervalo_segundos": 10
+}
