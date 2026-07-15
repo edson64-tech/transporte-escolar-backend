@@ -97,7 +97,11 @@ export class ErpService {
       },
       linha: {
         artigo: aluno.cod_artigo || (emp as any).cod_artigo_default,
-        descricao: `Transporte escolar — ${m.tipo === 'taxa_inscricao' ? 'Taxa de inscrição' : 'Mensalidade ' + m.mes}`,
+        descricao: (() => {
+          const mesTxt = m.tipo === 'taxa_inscricao' ? 'Taxa de inscrição' : ('Mensalidade ' + (m.mes ?? '')).trim();
+          const ref = aluno.referencia_pagamento ? ' | Ref. Multicaixa: ' + aluno.referencia_pagamento : '';
+          return (mesTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100);
+        })(),
         valor: Number(m.valor_previsto ?? m.valor ?? 0),
       },
     };
