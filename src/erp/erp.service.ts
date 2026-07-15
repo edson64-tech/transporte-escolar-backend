@@ -1,10 +1,28 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import * as stream from 'stream';
 import { cifrar, decifrar, gerarChaveAgente, hashChave } from './crypto.util';
 
 @Injectable()
 export class ErpService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private storage: StorageService) {}
+
+  private async uploadPdfCloudinary(buffer: Buffer, publicId: string): Promise<UploadApiResponse> {
+    const cfg = await this.storage.getActiveConfig();
+    cloudinary.config({ cloud_name: cfg.cloud_name!, api_key: cfg.api_key!, api_secret: cfg.api_secret!, secure: true });
+    const baseFolder = cfg.base_folder ?? 'transporte-escolar';
+    return new Promise<UploadApiResponse>((resolve, reject) => {
+      const pass = new stream.PassThrough();
+      const up = cloudinary.uploader.upload_stream(
+        { folder: `${baseFolder}/faturas`, public_id: publicId, overwrite: true, resource_type: 'raw', format: 'pdf' },
+        (err, res) => (err ? reject(err) : resolve(res as UploadApiResponse)),
+      );
+      pass.end(buffer);
+      pass.pipe(up);
+    });
+  }
 
   // ---------- EMPRESAS (painel) ----------
   criarEmpresa(dto: any) {
@@ -163,7 +181,22 @@ export class ErpService {
             emitido_em: new Date(),
           },
         });
-        // pdf_base64 → Cloudinary: liga-se na fase seguinte (upload.service)
+        if (body.pdf_base64) {
+          try {
+            const buf = Buffer.from(body.pdf_base64, 'base64');
+            const nome = (body.resultado?.numero_documento || jobId).toString().replace(/[^A-Za-z0-9._-]+/g, '_');
+            const up = await this.uploadPdfCloudinary(buf, nome);
+            await this.prisma.erp_documentos.updateMany({
+              where: { job_id: jobId },
+              data: { pdf_url: up.secure_url, pdf_public_id: up.public_id },
+            });
+          } catch (e: any) {
+            await this.prisma.erp_documentos.updateMany({
+              where: { job_id: jobId },
+              data: { erro: 'PDF upload falhou: ' + String(e?.message || e) },
+            });
+          }
+        }
       }
     } else {
       const esgotado = job.tentativas >= job.max_tentativas;
