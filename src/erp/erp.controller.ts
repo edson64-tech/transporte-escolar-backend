@@ -26,6 +26,11 @@ export class ErpController {
   @Post('empresas/:id/testar-ligacao') testar(@Param('id') id: string) { return this.svc.enfileirarTesteLigacao(id); }
 
   // Emissão manual (mensalidade + empresa)
+  @Post('fatura-multipla')
+  emitirMultipla(@Body() b: { mensalidade_ids: string[]; empresa_id: string }) {
+    return this.svc.emitirFaturaPorCobrancas(b.mensalidade_ids, b.empresa_id);
+  }
+
   @Post('fatura/:mensalidade_id/:empresa_id')
   emitir(@Param('mensalidade_id') m: string, @Param('empresa_id') e: string) {
     return this.svc.emitirFaturaPorMensalidade(m, e);

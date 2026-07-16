@@ -1012,6 +1012,7 @@ model erp_empresas {
   cod_cliente_default String?          @db.VarChar(30)
   cod_artigo_default  String?          @db.VarChar(30)
   agente_id           String?          @db.Uuid
+  cod_artigo_taxa     String?          @db.VarChar(30)
   erp_documentos      erp_documentos[]
   erp_agentes         erp_agentes?     @relation(fields: [agente_id], references: [agente_id], onDelete: NoAction, onUpdate: NoAction)
   erp_jobs            erp_jobs[]

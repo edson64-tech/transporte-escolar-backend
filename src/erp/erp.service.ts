@@ -117,6 +117,66 @@ export class ErpService {
     return { ok: true, job_id: job.job_id };
   }
 
+  // ---------- EMISSÃO MULTI-COBRANÇA (1 pagamento com N cobranças = 1 fatura com N linhas) ----------
+  async emitirFaturaPorCobrancas(mensalidadeIds: string[], empresaId: string) {
+    if (!mensalidadeIds?.length) throw new BadRequestException('Sem cobranças');
+    const emp = await this.prisma.erp_empresas.findUnique({ where: { empresa_id: empresaId } });
+    if (!emp) throw new NotFoundException('Empresa ERP não encontrada');
+
+    const ms: any[] = await this.prisma.mensalidades.findMany({ where: { mensalidade_id: { in: mensalidadeIds } } as any });
+    if (ms.length !== mensalidadeIds.length) throw new NotFoundException('Alguma cobrança não foi encontrada');
+    const alunoIds = [...new Set(ms.map((m) => m.aluno_id))];
+    if (alunoIds.length !== 1) throw new BadRequestException('As cobranças têm de ser do mesmo aluno');
+    const aluno: any = await this.prisma.alunos.findFirst({ where: { aluno_id: alunoIds[0] } as any });
+    if (!aluno) throw new NotFoundException('Aluno não encontrado');
+
+    // idempotência: nenhuma pode já estar emitida/pendente
+    const existentes = await this.prisma.erp_documentos.findMany({
+      where: { mensalidade_id: { in: mensalidadeIds }, estado: { not: 'falhado' } },
+    });
+    if (existentes.length)
+      throw new BadRequestException(`Cobrança(s) já com documento: ${existentes.map((e) => e.numero_documento || e.mensalidade_id).join(', ')}`);
+
+    const ref = aluno.referencia_pagamento ? ' | Ref. Multicaixa: ' + aluno.referencia_pagamento : '';
+    const linhas = ms.map((m) => {
+      const eTaxa = m.tipo === 'taxa_inscricao';
+      const artigo = eTaxa
+        ? ((emp as any).cod_artigo_taxa || aluno.cod_artigo || (emp as any).cod_artigo_default)
+        : (aluno.cod_artigo || (emp as any).cod_artigo_default);
+      const mesTxt = eTaxa ? 'Taxa de inscrição' : ('Mensalidade ' + (m.mes ?? '')).trim();
+      return {
+        mensalidade_id: m.mensalidade_id,
+        artigo,
+        valor: Number(m.valor_previsto ?? m.valor ?? 0),
+        descricao: (mesTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100),
+      };
+    });
+    if (linhas.some((l) => !l.artigo))
+      throw new BadRequestException('Linha sem artigo: defina cod_artigo do aluno ou os artigos por defeito da empresa (mensalidade e taxa)');
+
+    const payload = {
+      mensalidade_ids: mensalidadeIds,
+      cliente: {
+        cod_cliente: aluno.cod_cliente || (emp as any).cod_cliente_default || null,
+        codigo_aluno: aluno.codigo_aluno,
+        nome: aluno.faturacao_nome || aluno.nome,
+        nif: aluno.faturacao_nif || aluno.num_documento || 'Consumidor Final',
+      },
+      linhas,
+    };
+    if (!payload.cliente.cod_cliente) throw new BadRequestException('Sem cliente: defina o cod_cliente do aluno ou o Cliente por defeito da empresa');
+
+    const job = await this.criarJob('emitir_documento', empresaId, payload);
+    for (const l of linhas) {
+      await this.prisma.erp_documentos.upsert({
+        where: { mensalidade_id: l.mensalidade_id },
+        create: { mensalidade_id: l.mensalidade_id, aluno_id: aluno.aluno_id, empresa_id: empresaId, job_id: job.job_id, valor: l.valor },
+        update: { estado: 'pendente', erro: null, job_id: job.job_id, empresa_id: empresaId },
+      });
+    }
+    return { ok: true, job_id: job.job_id, linhas: linhas.length };
+  }
+
   // ---------- AGENTE ----------
   async heartbeat(agenteId: string, versao?: string) {
     await this.prisma.erp_agentes.update({
