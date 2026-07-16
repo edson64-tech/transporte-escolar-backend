@@ -87,6 +87,8 @@ export class ErpService {
     const emp = await this.prisma.erp_empresas.findUnique({ where: { empresa_id: empresaId } });
     if (!emp) throw new NotFoundException('Empresa ERP não encontrada');
 
+    const rotaNome = await this.rotaDoAluno(m.aluno_id);
+
     const payload = {
       mensalidade_id: mensalidadeId,
       cliente: {
@@ -100,7 +102,8 @@ export class ErpService {
         descricao: (() => {
           const mesTxt = m.tipo === 'taxa_inscricao' ? 'Taxa de inscrição' : ('Mensalidade ' + (m.mes ?? '')).trim();
           const ref = aluno.referencia_pagamento ? ' | Ref. Multicaixa: ' + aluno.referencia_pagamento : '';
-          return (mesTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100);
+          const rotaTxt = rotaNome ? ' | Rota: ' + rotaNome : '';
+          return (mesTxt + rotaTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100);
         })(),
         valor: Number(m.valor_previsto ?? m.valor ?? 0),
       },
@@ -137,6 +140,8 @@ export class ErpService {
     if (existentes.length)
       throw new BadRequestException(`Cobrança(s) já com documento: ${existentes.map((e) => e.numero_documento || e.mensalidade_id).join(', ')}`);
 
+    const rotaNome = await this.rotaDoAluno(aluno.aluno_id);
+    const rotaTxt = rotaNome ? ' | Rota: ' + rotaNome : '';
     const ref = aluno.referencia_pagamento ? ' | Ref. Multicaixa: ' + aluno.referencia_pagamento : '';
     const linhas = ms.map((m) => {
       const eTaxa = m.tipo === 'taxa_inscricao';
@@ -148,7 +153,7 @@ export class ErpService {
         mensalidade_id: m.mensalidade_id,
         artigo,
         valor: Number(m.valor_previsto ?? m.valor ?? 0),
-        descricao: (mesTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100),
+        descricao: (mesTxt + rotaTxt + ref + ' | Referente a: ' + aluno.nome).slice(0, 100),
       };
     });
     if (linhas.some((l) => !l.artigo))
@@ -287,6 +292,18 @@ export class ErpService {
       }
     }
     return { ok: true };
+  }
+
+  private async rotaDoAluno(alunoId: string): Promise<string | null> {
+    try {
+      const ad: any = await this.prisma.adesoes_servico.findFirst({
+        where: { aluno_id: alunoId, status: 'ativo' } as any,
+        orderBy: { created_at: 'desc' } as any,
+      });
+      if (!ad?.rota_id) return null;
+      const r: any = await this.prisma.rotas.findUnique({ where: { rota_id: ad.rota_id } as any });
+      return r?.nome || r?.codigo || null;
+    } catch { return null; }
   }
 
   private criarJob(tipo: string, empresaId: string, payload: any) {
