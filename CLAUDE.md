@@ -368,3 +368,14 @@ Windows (NSSM) está pendente.
 7. Anular FRs de teste 310-316 na TRE; ativar a24; primeira fatura real
 8. Pendentes antigos que continuam: senha admin do painel, refs órfãs ao Hub
    (522110746/578410747/576610748), Brevo/email, og-image, operadores
+
+## ATUALIZACAO 16/07: ENSAIO GERAL APROVADO
+Fluxo completo validado: webhook Hub (HMAC) -> cobrancas quitadas -> aluno ativado ->
+fatura multi-linha automatica (taxa+mensalidade numa FR) -> PDF -> Cloudinary -> erp_documentos.
+FR 2026A/319 emitida em 12 segundos (keep-alive ativo). Agente v0.7 (multi-linha + keep-alive).
+Gatilho no webhook: prefere empresa ativa com modo_teste=false; try/catch nunca afeta pagamento.
+Descricao da linha: "Mensalidade X | Rota: NOME | Ref. Multicaixa: NNN | Referente a: ALUNO".
+Novos endpoints: GET /erp/agente/empresas (keep-alive), POST /erp/fatura-multipla.
+Novo campo: erp_empresas.cod_artigo_taxa. Fila: resgate de orfaos + levantamento atomico.
+FRs de teste na TRE a anular: 310-319. Falta para producao: servico Windows (NSSM),
+fiscal a24 (contabilista), senhas queimadas (api/ealves/admin), ModoPag por empresa.
