@@ -113,6 +113,7 @@ export class ErpService {
         codigo_aluno: aluno.codigo_aluno,
         nome: aluno.faturacao_nome || aluno.nome,
         nif: aluno.faturacao_nif || aluno.num_documento || 'Consumidor Final',
+        morada: aluno.morada || null,
       },
       linha: {
         artigo: aluno.cod_artigo || (emp as any).cod_artigo_default,
@@ -183,6 +184,7 @@ export class ErpService {
         codigo_aluno: aluno.codigo_aluno,
         nome: aluno.faturacao_nome || aluno.nome,
         nif: aluno.faturacao_nif || aluno.num_documento || 'Consumidor Final',
+        morada: aluno.morada || null,
       },
       linhas,
     };
