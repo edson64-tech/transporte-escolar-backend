@@ -218,6 +218,9 @@ export class ErpService {
       cod_cliente_default: dto.cod_cliente_default ?? null,
       cod_artigo_default: dto.cod_artigo_default ?? null,
       cod_artigo_taxa: dto.cod_artigo_taxa ?? null,
+      modo_pagamento: dto.modo_pagamento ?? null,
+      cond_pagamento: dto.cond_pagamento ?? null,
+      mapa_impressao: dto.mapa_impressao ?? null,
       modo_teste: dto.modo_teste !== false,
       agente_id: agenteId,
       ativa: true,
@@ -249,6 +252,9 @@ export class ErpService {
       cod_iva_default: e.cod_iva_default,
       cod_cliente_default: (e as any).cod_cliente_default ?? null,
       cod_artigo_default: (e as any).cod_artigo_default ?? null,
+      modo_pagamento: (e as any).modo_pagamento ?? null,
+      cond_pagamento: (e as any).cond_pagamento ?? null,
+      mapa_impressao: (e as any).mapa_impressao ?? null,
       modo_teste: e.modo_teste,
     }));
   }
@@ -309,6 +315,9 @@ export class ErpService {
           cod_iva_default: e.cod_iva_default,
           cod_cliente_default: (e as any).cod_cliente_default ?? null,
           cod_artigo_default: (e as any).cod_artigo_default ?? null,
+          modo_pagamento: (e as any).modo_pagamento ?? null,
+          cond_pagamento: (e as any).cond_pagamento ?? null,
+          mapa_impressao: (e as any).mapa_impressao ?? null,
           modo_teste: e.modo_teste,
         },
       });
