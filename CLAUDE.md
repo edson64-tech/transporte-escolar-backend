@@ -286,3 +286,85 @@ do browser causavam ERR_BLOCKED_BY_CLIENT — resolvido com o viewer embutido.
   quando o GitHub sync estiver ativo) → deploy com /root/deploy-admin.sh.
 - Antes de tarefas grandes: propor plano, esperar OK.
 - Depois de cada mudança: testar de facto (curl/browser) antes de reportar sucesso.
+
+---
+
+# ADENDO 13-15/07/2026 — INTEGRADOR ERP PRIMAVERA (ESTADO E REGRAS)
+
+## Estado: MOTOR FUNCIONAL EM AMBIENTE DE TESTE
+Emissão de Fatura-Recibo validada de ponta a ponta (FRs 310-316 na empresa de teste TRE),
+com PDF devolvido à plataforma e subido ao Cloudinary. Falta: webhook automático, réplica
+fiscal na a24, endurecimento (ver pendentes).
+
+## Arquitetura (não alterar sem razão forte)
+Plataforma (droplet) → fila `erp_jobs` → Agente Node.js no servidor do Primavera
+(C:\Agente24, ligação APENAS de saída, sem VPN/portas) → WebAPI Primavera localhost:2018.
+Tabelas: erp_empresas (credenciais cifradas AES-GCM, defaults de cliente/artigo/série/IVA,
+amarrada a um agente via agente_id) · erp_agentes (chave só como hash SHA-256) ·
+erp_jobs (fila, retries 5x, idempotência) · erp_documentos (UNIQUE mensalidade_id =
+1 pagamento 1 fatura; pdf_url do Cloudinary).
+Endpoints do agente: POST /erp/agente/heartbeat · GET /erp/agente/jobs ·
+POST /erp/agente/jobs/:id/resultado — autenticados por header X-Agent-Key.
+Painel: página "ERP Primavera" (3 separadores) em escolar.assistance24.ao.
+
+## Empresas na plataforma
+- TRE "Transporte Escolar (TESTE)" empresa_id=2fc72ff1-701b-4e6b-a226-52add3d4c69a
+  serie=2026A, cliente default=CF, artigo default=01001, IVA=90, modo_teste=true
+- a24 "Assistance24 (PRODUCAO)" empresa_id=52024036-6357-41cf-a48c-65ddb87b7593
+  INATIVA até réplica fiscal (série/IVA/artigos reais do contabilista)
+Agente de produção: agente_id=e0182a44-5d65-4a7f-abf0-918ebc1ae543, serve TRE e a24.
+Chave do agente: instalada em C:\Agente24\config.json (Windows) — NUNCA colar em chats;
+qualquer chave exposta roda-se (criar agente novo + desativar antigo).
+
+## Utilizador do ERP
+Utilizador dedicado `api` no Primavera, associado às empresas. Senha atual está QUEIMADA
+(apareceu em chat) — TROCAR e atualizar no painel (Empresas → lápis). Idem senha do ealves.
+
+## Agente Windows — v0.5 (fonte oficial: agente/agente.js neste repo)
+Fluxo: heartbeat → busca jobs (só das SUAS empresas) → executa → devolve resultado+pdf_base64.
+Emissão: POST /v2/Vendas/Docs/CreateSalesDocument. PDF: PrintDocumentToPDF devolve bytes
+no corpo (mapa GcpVls02) + grava cópia em C:\Windows\Temp (o agente limpa).
+v0.5 aplica identificação REAL do pagador no documento: Nome/NumContribuinte/Morada do
+payload cliente sobrepõem-se ao consumidor final CF. Descrição da linha (montada no
+backend): "Mensalidade X | Ref. Multicaixa: NNN | Referente a: NOME DO ALUNO".
+Arranque manual: cd C:\Agente24 && node agente.js (janela aberta!). Promover a serviço
+Windows (NSSM) está pendente.
+
+## Lições Primavera (custo: horas — NÃO redescobrir)
+- Payload: campo é "Tipodoc" (d minúsculo); "PrecUnit"; CodIva é o CÓDIGO da tabela
+  (90=isento aqui), não a taxa — código inexistente dá HTTP 417 NullReference; ModoPag e
+  CondPag OBRIGATÓRIOS em FR e o ModoPag tem de ser compatível com a conta de tesouraria
+  da série; não enviar Cambio (ERP calcula); incluir Filial/Seccao/RegimeIva/
+  TipoLancamento e na linha Unidade/Armazem/MovStock/TipoLinha.
+- Diagnóstico de 417: gravar doc igual à mão no ERP e ler via GET /v2/Vendas/Docs/Edita/
+  000/FR/2026A/N — espelhar os campos.
+- Falso sucesso: 200 com Results.CreateDocument=false = série/entidade/artigo inexistente.
+- PDF: NomePDF só aceita NOME de ficheiro (caminho completo → IIS 400).
+- Token expira ~20 min; 1 token por empresa; utilizador tem de estar associado à empresa
+  e a empresa "Em produtivo" (senão "Integration platform not open").
+- Swagger da build: http://localhost:2018/WebApi/swagger/ui/index (docs/v2_vendas etc.)
+- Documentação de referência: agente/INTEGRADOR_PRIMAVERA.md, agente/GUIA_API_PRIMAVERA_
+  VENDAS.md e coleção Postman (se adicionados ao repo).
+
+## Fluxos de trabalho ATUALIZADOS
+- Frontend: código escreve-se NO SERVIDOR em /root/admin-frontend (clone git de
+  school-ride-connect) → commit/push → aparece no Lovable (sync bidirecional).
+  Deploy: /root/deploy-admin.sh (git pull + build + publica). FIM DOS ZIPS.
+- Backend: /root/transporte-escolar-backend, repo transporte-escolar-backend, ritual:
+  backup → alterar → tsc --noEmit → build → pm2 restart → testar → commit/push.
+- Testes de emissão: INSERT direto em erp_jobs com payload
+  {"cliente":{...},"linha":{"valor":N,"descricao":"..."}} para a empresa TRE.
+
+## PENDENTES DO INTEGRADOR (ordem)
+1. Timeout de jobs órfãos (em_curso >10min → pendente) + buscarJobs atómico
+2. Webhook do Hub → fila, com MULTI-LINHA (decisão fechada: inscrição+mensalidade =
+   1 fatura com 2 linhas; artigo por tipo — novo campo cod_artigo_taxa na empresa)
+3. ModoPag/CondPag/mapa de impressão configuráveis por empresa (hoje hardcoded RTRF/1/
+   GcpVls02 no agente) + campo Agente no formulário da empresa no painel
+4. Backend enviar morada do encarregado no payload (agente já a aplica)
+5. Agente como serviço Windows (NSSM) + instalador simples para técnicos
+6. Fiscal a24 (contabilista): série real, código IVA real, modo pagamento Multicaixa +
+   conta de tesouraria, obrigações AGT
+7. Anular FRs de teste 310-316 na TRE; ativar a24; primeira fatura real
+8. Pendentes antigos que continuam: senha admin do painel, refs órfãs ao Hub
+   (522110746/578410747/576610748), Brevo/email, og-image, operadores
