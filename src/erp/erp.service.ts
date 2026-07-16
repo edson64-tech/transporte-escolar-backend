@@ -133,17 +133,31 @@ export class ErpService {
     });
     const ids = minhas.map((e) => e.empresa_id);
     if (!ids.length) return [];
-    const jobs = await this.prisma.erp_jobs.findMany({
+
+    // RESGATE DE ÓRFÃOS: em_curso há >10 min (agente morreu a meio) volta a pendente
+    await this.prisma.erp_jobs.updateMany({
+      where: {
+        estado: 'em_curso',
+        empresa_id: { in: ids },
+        iniciado_em: { lt: new Date(Date.now() - 10 * 60 * 1000) },
+      },
+      data: { estado: 'pendente' },
+    });
+
+    const candidatos = await this.prisma.erp_jobs.findMany({
       where: { estado: 'pendente', empresa_id: { in: ids } },
       orderBy: { criado_em: 'asc' },
       take: 10,
     });
     const resultado = [] as any[];
-    for (const j of jobs) {
-      await this.prisma.erp_jobs.update({
-        where: { job_id: j.job_id },
+    for (const j of candidatos) {
+      // LEVANTAMENTO ATÓMICO: só ganha quem transitar pendente->em_curso;
+      // se outro processo levou o job entretanto, count=0 e saltamos
+      const ganho = await this.prisma.erp_jobs.updateMany({
+        where: { job_id: j.job_id, estado: 'pendente' },
         data: { estado: 'em_curso', agente_id: agenteId, iniciado_em: new Date(), tentativas: { increment: 1 } },
       });
+      if (ganho.count === 0) continue;
       const e = await this.prisma.erp_empresas.findUnique({ where: { empresa_id: j.empresa_id } });
       resultado.push({
         job_id: j.job_id,
