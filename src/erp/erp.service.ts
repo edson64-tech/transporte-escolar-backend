@@ -43,6 +43,23 @@ export class ErpService {
     return this.prisma.erp_empresas.update({ where: { empresa_id: id }, data });
   }
 
+  async apagarEmpresa(id: string) {
+    const docs = await this.prisma.erp_documentos.count({ where: { empresa_id: id } });
+    if (docs > 0)
+      throw new BadRequestException(`Empresa tem ${docs} documento(s) fiscais — não pode ser apagada, apenas desativada`);
+    await this.prisma.erp_jobs.deleteMany({ where: { empresa_id: id } });
+    await this.prisma.erp_empresas.delete({ where: { empresa_id: id } });
+    return { ok: true };
+  }
+
+  async apagarAgente(id: string) {
+    const emps = await this.prisma.erp_empresas.count({ where: { agente_id: id } as any });
+    if (emps > 0)
+      throw new BadRequestException(`Agente serve ${emps} empresa(s) — reatribua-as primeiro`);
+    await this.prisma.erp_agentes.delete({ where: { agente_id: id } });
+    return { ok: true };
+  }
+
   // ---------- AGENTES (painel) ----------
   async criarAgente(nome: string) {
     const chave = gerarChaveAgente();

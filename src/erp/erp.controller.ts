@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -16,6 +16,9 @@ export class ErpController {
   @Post('empresas') criarEmpresa(@Body() dto: any) { return this.svc.criarEmpresa(dto); }
   @Get('empresas') listarEmpresas() { return this.svc.listarEmpresas(); }
   @Put('empresas/:id') atualizarEmpresa(@Param('id') id: string, @Body() dto: any) { return this.svc.atualizarEmpresa(id, dto); }
+
+  @Delete('empresas/:id') apagarEmpresa(@Param('id') id: string) { return this.svc.apagarEmpresa(id); }
+  @Delete('agentes/:id') apagarAgente(@Param('id') id: string) { return this.svc.apagarAgente(id); }
 
   // Agentes
   @Post('agentes') criarAgente(@Body() b: { nome: string }) { return this.svc.criarAgente(b.nome); }
