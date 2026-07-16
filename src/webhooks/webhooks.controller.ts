@@ -2,13 +2,14 @@ import { Controller, Post, Req, Headers, HttpCode, UnauthorizedException, Logger
 import type { RawBodyRequest } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
+import { ErpService } from '../erp/erp.service';
 import * as crypto from 'crypto';
 
 @ApiTags('Webhooks')
 @Controller('webhooks')
 export class WebhooksController {
   private readonly logger = new Logger('WebhooksHub');
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private erp: ErpService) {}
 
   @Post('hub')
   @HttpCode(200)
@@ -85,6 +86,7 @@ export class WebhooksController {
 
     let restante = amount;
     const pagas: string[] = [];
+    const pagasIds: string[] = [];
     for (const m of pendentes) {
       const valor = Number(m.valor_previsto);
       if (restante + 0.01 < valor) break; // só marca pago se o valor cobrir a cobrança inteira
@@ -94,6 +96,7 @@ export class WebhooksController {
       });
       restante -= valor;
       pagas.push(`${m.tipo === 'taxa_inscricao' ? 'TAXA' : 'mes ' + m.mes} (${valor})`);
+      pagasIds.push(m.mensalidade_id);
     }
     const mensalidadePaga = pagas.length ? pagas.join(', ') : null;
 
@@ -128,6 +131,23 @@ export class WebhooksController {
           data: { ativo: true, motivo_estado: 'normal' },
         });
         reativado = true;
+      }
+    }
+
+    // 7. FATURACAO ERP: 1 pagamento = 1 fatura com todas as cobrancas quitadas agora
+    if (pagasIds.length) {
+      try {
+        const empresaFat =
+          (await this.prisma.erp_empresas.findFirst({ where: { ativa: true, modo_teste: false } as any, orderBy: { criado_em: 'asc' } })) ||
+          (await this.prisma.erp_empresas.findFirst({ where: { ativa: true } as any, orderBy: { criado_em: 'asc' } }));
+        if (empresaFat) {
+          const r = await this.erp.emitirFaturaPorCobrancas(pagasIds, empresaFat.empresa_id);
+          this.logger.log(`Fatura ERP enfileirada: job ${r.job_id} (${r.linhas} linha(s)) empresa=${empresaFat.codigo_empresa}`);
+        } else {
+          this.logger.log('Sem empresa ERP ativa - faturacao nao enfileirada');
+        }
+      } catch (e: any) {
+        this.logger.error('Falha ao enfileirar fatura ERP (pagamento OK; retry/manual): ' + String(e?.message || e));
       }
     }
 
