@@ -183,6 +183,39 @@ export class ErpService {
   }
 
   // ---------- AGENTE ----------
+  async registarEmpresaDoAgente(agenteId: string, dto: any) {
+    if (!dto?.codigo_empresa || !dto?.api_username || !dto?.api_password)
+      throw new BadRequestException('codigo_empresa, api_username e api_password sao obrigatorios');
+    const instancia = dto.instancia || 'DEFAULT';
+    const existente = await this.prisma.erp_empresas.findFirst({
+      where: { codigo_empresa: dto.codigo_empresa, instancia } as any,
+    });
+    const dados: any = {
+      nome: dto.nome || dto.codigo_empresa,
+      linha: dto.linha || 'Executivo',
+      api_username: dto.api_username,
+      api_password: cifrar(dto.api_password),
+      serie: dto.serie ?? null,
+      tipo_documento: dto.tipo_documento || 'FR',
+      cod_iva_default: dto.cod_iva_default ?? null,
+      cod_cliente_default: dto.cod_cliente_default ?? null,
+      cod_artigo_default: dto.cod_artigo_default ?? null,
+      cod_artigo_taxa: dto.cod_artigo_taxa ?? null,
+      modo_teste: dto.modo_teste !== false,
+      agente_id: agenteId,
+      ativa: true,
+      atualizado_em: new Date(),
+    };
+    if (existente) {
+      const e = await this.prisma.erp_empresas.update({ where: { empresa_id: existente.empresa_id }, data: dados });
+      return { acao: 'atualizada', empresa_id: e.empresa_id };
+    }
+    const e = await this.prisma.erp_empresas.create({
+      data: { ...dados, codigo_empresa: dto.codigo_empresa, instancia },
+    });
+    return { acao: 'criada', empresa_id: e.empresa_id };
+  }
+
   async empresasDoAgente(agenteId: string) {
     const emps = await this.prisma.erp_empresas.findMany({
       where: { agente_id: agenteId, ativa: true } as any,

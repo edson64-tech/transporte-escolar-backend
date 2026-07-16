@@ -12,6 +12,11 @@ export class AgenteController {
     return this.svc.heartbeat(req.agente.agente_id, body?.versao);
   }
 
+  @Post('registar-empresa')
+  registarEmpresa(@Req() req: any, @Body() dto: any) {
+    return this.svc.registarEmpresaDoAgente(req.agente.agente_id, dto);
+  }
+
   @Get('empresas')
   empresas(@Req() req: any) {
     return this.svc.empresasDoAgente(req.agente.agente_id);
