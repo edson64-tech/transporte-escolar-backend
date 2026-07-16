@@ -183,6 +183,26 @@ export class ErpService {
   }
 
   // ---------- AGENTE ----------
+  async empresasDoAgente(agenteId: string) {
+    const emps = await this.prisma.erp_empresas.findMany({
+      where: { agente_id: agenteId, ativa: true } as any,
+      orderBy: { criado_em: 'asc' },
+    });
+    return emps.map((e) => ({
+      codigo_empresa: e.codigo_empresa,
+      instancia: e.instancia,
+      linha: e.linha,
+      username: e.api_username,
+      password: decifrar(e.api_password),
+      serie: e.serie,
+      tipo_documento: e.tipo_documento,
+      cod_iva_default: e.cod_iva_default,
+      cod_cliente_default: (e as any).cod_cliente_default ?? null,
+      cod_artigo_default: (e as any).cod_artigo_default ?? null,
+      modo_teste: e.modo_teste,
+    }));
+  }
+
   async heartbeat(agenteId: string, versao?: string) {
     await this.prisma.erp_agentes.update({
       where: { agente_id: agenteId },

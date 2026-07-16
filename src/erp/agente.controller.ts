@@ -12,6 +12,11 @@ export class AgenteController {
     return this.svc.heartbeat(req.agente.agente_id, body?.versao);
   }
 
+  @Get('empresas')
+  empresas(@Req() req: any) {
+    return this.svc.empresasDoAgente(req.agente.agente_id);
+  }
+
   @Get('jobs')
   jobs(@Req() req: any) {
     return this.svc.buscarJobs(req.agente.agente_id);
